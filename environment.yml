@@ -1,0 +1,10 @@
+name: env-cgan
+channels:
+  - defaults
+dependencies:
+  - jupyter
+  - matplotlib
+  - numpy
+  - python
+  - pytorch
+prefix: /opt/anaconda3/envs/env-cgan
