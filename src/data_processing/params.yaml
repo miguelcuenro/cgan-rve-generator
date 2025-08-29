@@ -1,0 +1,2 @@
+source: '/path/to/raw_data' # Path to the directory holding the data to be processed.
+destination: '/path/to/processed_data' # Path to the directory where the processed data should be stored.

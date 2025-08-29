@@ -1,0 +1,2 @@
+source: /path/to/raw_data
+destination: /path/to/processed_data
