@@ -93,7 +93,7 @@ def process_simulation_dir(simulations_dir: str, output_dir: str, counter: int) 
     phase_array = np.zeros(grid['material'].__len__())
 
     # Check  if the phase array can be reshaped to 64x64x64
-    if phase_array.size =! 64 * 64 * 64:
+    if phase_array.size != 64 * 64 * 64:
         print(f"Skipping {simulations_dir} as the grid size is not 64x64x64.")
         number_of_skipped_size += 1
         return counter
@@ -197,7 +197,7 @@ def perform_augmentation(data_dir: str) -> None:
     # Iterate over directories
     for dirs in os.listdir(data_dir):
         sub_dir_path = os.path.join(sub_dir_path, dirs)
-        phase_file_path = = os.path.join(sub_dir_path, 'phase_grid.npy')
+        phase_file_path = os.path.join(sub_dir_path, 'phase_grid.npy')
         label_file_path = os.path.join(sub_dir_path, 'label.npy')
         
         if os.path.exists(phase_file_path) and os.path.exists(label_file_path):

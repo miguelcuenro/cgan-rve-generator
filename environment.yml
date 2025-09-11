@@ -7,4 +7,5 @@ dependencies:
   - numpy
   - python
   - pytorch
+  - conda-forge::pyvista
 prefix: /opt/anaconda3/envs/env-cgan
