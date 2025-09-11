@@ -92,8 +92,8 @@ def process_simulation_dir(simulations_dir: str, output_dir: str, counter: int) 
     grid = pv.read(simulations_dir + '/grid.vti')
     phase_array = np.zeros(grid['material'].__len__())
 
-    # Check  if the phase array can be reshaped to 64x64x64
-    if phase_array.size != 64 * 64 * 64:
+    # Check  if the phase array can be reshaped to 32x32x32
+    if phase_array.size != 32 * 32 * 32:
         print(f"Skipping {simulations_dir} as the grid size is not 64x64x64.")
         number_of_skipped_size += 1
         return counter
@@ -105,6 +105,9 @@ def process_simulation_dir(simulations_dir: str, output_dir: str, counter: int) 
         else:
             points = grid['material'].flatten(order='F') == k
             phase_array[points] = 1
+
+    phase_array = phase_array.reshape((32, 32, 32))
+    number_of_NOT_skipped += 1
 
     # Extract simulation number from the raw_data_dir
     number = os.path.basename(simulations_dir)
@@ -137,7 +140,7 @@ def process_simulation_dir(simulations_dir: str, output_dir: str, counter: int) 
             if 'Percentage of Ferrite' in line:
                 ferrite_percentage = float(line.split(': ')[1].strip('%\n'))
             elif 'Percentage of Martensite' in line:
-                martensite_percentage = float(line.split(': ')[1].strip('%/n'))
+                martensite_percentage = float(line.split(': ')[1].strip('%\n'))
             elif 'Number of Bands' in line:
                 num_bands = int(float(line.split(': ')[1].strip()))
             elif 'Adjustment of martensite size' in line:
@@ -196,7 +199,7 @@ def perform_augmentation(data_dir: str) -> None:
     '''
     # Iterate over directories
     for dirs in os.listdir(data_dir):
-        sub_dir_path = os.path.join(sub_dir_path, dirs)
+        sub_dir_path = os.path.join(data_dir, dirs)
         phase_file_path = os.path.join(sub_dir_path, 'phase_grid.npy')
         label_file_path = os.path.join(sub_dir_path, 'label.npy')
         
@@ -243,10 +246,10 @@ def traverse_directories(input_dir: str, output_dir: str) -> int:
     return counter
 
 # Traverse the directory structure starting from store_path_dir
-traverse_directories(store_path_dir)
+traverse_directories(raw_data_dir, processed_data_dir)
 
 # Perform augmentation
-perform_augmentation(parent_store_dir)
+perform_augmentation(processed_data_dir)
 
 print(number_of_skipped_files, "skipped due to missing files or Specs.txt errors.")
 print(number_of_skipped_size, "skipped due to size.")
