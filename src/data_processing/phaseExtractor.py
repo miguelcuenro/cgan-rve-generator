@@ -185,9 +185,21 @@ def process_simulation_dir(simulations_dir: str, output_dir: str, counter: int) 
     
     return counter
 
-def perform_augmentation(processed_data_dir: str) -> None:
+def perform_augmentation(data_dir: str) -> None:
+    '''
+    Enriches the dataset by introducing rotated versions of the existing data.
+
+    Parameters
+    ----------
+    data_dir: str
+        The path to the directory holding the data to be processed.
+
+    Returns
+    ----------
+    None
+    '''
     # Iterate over directories
-    for dirs in os.listdir(processed_data_dir):
+    for dirs in os.listdir(data_dir):
         sub_dir_path = os.path.join(sub_dir_path, dirs)
         phase_file_path = = os.path.join(sub_dir_path, 'phase_grid.npy')
         label_file_path = os.path.join(sub_dir_path, 'label.npy')
@@ -233,3 +245,16 @@ def traverse_directories(input_dir: str, output_dir: str) -> int:
         full_dir_path = os.path.join(input_dir, dir_name)
         counter = process_simulation_dir(full_dir_path, output_dir, counter)
     return counter
+
+# Traverse the directory structure starting from store_path_dir
+traverse_directories(store_path_dir)
+
+# Perform augmentation
+perform_augmentation(parent_store_dir)
+
+print(number_of_skipped_files, "skipped due to missing files or Specs.txt errors.")
+print(number_of_skipped_size, "skipped due to size.")
+print(number_of_NOT_skipped, "processed successfully.")
+print("Extracting phase process completed!")
+print(number_of_bands_zero, "files with number of bands 0.")
+print(number_of_bands_more_than_zero, "files with more than 0 bands.")
