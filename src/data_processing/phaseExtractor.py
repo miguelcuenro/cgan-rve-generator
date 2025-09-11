@@ -79,10 +79,111 @@ def process_simulation_dir(simulations_dir: str, output_dir: str, counter: int) 
 
     material_file_path = os.path.join(simulations_dir, 'material.yaml')
     specs_file_path = os.path.join(simulations_dir, 'Specs.txt')
-
     
     with open(material_file_path, 'r') as ym:
         ym = yaml.safe_load(ym)
+
+    mat = ym['material']
+    phase_list = []
+
+    for m in mat:
+        phase = m['constituents'][0]['phase']
+        if phase.startswith('Ferrite'):
+            phase_list.append(0)
+        else:
+            phase_list.append(1)
+
+    grid = pv.read(simulations_dir + '/grid.vti')
+    phase_array = np.zeros(grid['material'].__len__())
+
+    # Check  if the phase array can be reshaped to 64x64x64
+    if phase_array.size =! 64 * 64 * 64:
+        print(f"Skipping {simulations_dir} as the grid size is not 64x64x64.")
+        number_of_skipped_size += 1
+        return counter
+
+    for k in range(len(phase_list)):
+        if phase_list[k] == 0:
+            points = grid['material'].flatten(order='F') == k
+            phase_array[points] = 0
+        else:
+            points = grid['material'].flatten(order='F') == k
+            phase_array[points] = 1
+
+    # Extract simulation number from the raw_data_dir
+    number = os.path.basename(simulations_dir)
+    sub_dir_name = str(number)
+
+    # Create the new directory for storing phase information
+    new_dir_path = os.path.join(processed_data_dir, sub_dir_name)
+    os.makedirs(new_dir_path, exist_ok=True)
+
+    # Save the phase array to a numpy file
+    phase_file_path = os.path.join(new_dir_path, 'phase_grid.npy')
+    np.save(phase_file_path, phase_array)
+
+    try:
+        # Read and extract information from Specs.txt
+        with open(specs_file_path, 'r') as specs_file:
+            specs_content = specs_file.readlines()
+
+        # Initialize variables
+        ferrite_percentage = None
+        martensite_percentage = None
+        num_bands = 0
+        adjustment_martensite_size = None
+        adjustment_martensite_aspect_ratio = None
+        adjustment_ferrite_size = None
+        adjustment_ferrite_aspect_ratio = None
+
+        # Parse the Specs.txt file
+        for line in specs_content:
+            if 'Percentage of Ferrite' in line:
+                ferrite_percentage = float(line.split(': ')[1].strip('%\n'))
+            elif 'Percentage of Martensite' in line:
+                martensite_percentage = float(line.split(': ')[1].strip('%/n'))
+            elif 'Number of Bands' in line:
+                num_bands = int(float(line.split(': ')[1].strip()))
+            elif 'Adjustment of martensite size' in line:
+                adjustment_martensite_size = float(line.split('x ')[1].strip())
+            elif 'Adjustment of martensite aspect ratios' in line:
+                adjustment_martensite_aspect_ratio = float(line.split('x ')[1].strip())
+            elif 'Adjustment of ferrite size' in line:
+                adjustment_ferrite_size = float(line.split('x ')[1].strip())
+            elif 'Adjustment of ferrite aspect ratios' in line:
+                adjustment_ferrite_aspect_ratio = float(line.split('x ')[1].strip())
+        
+        # Check if essential information is found and fill missing fields with 0
+        ferrite_percentage = ferrite_percentage if ferrite_percentage is not None else 0.0
+        martensite_percentage = martensite_percentage if martensite_percentage is not None else 0.0
+        adjustment_martensite_size = adjustment_martensite_size if adjustment_martensite_size is not None else 0.0
+        adjustment_martensite_aspect_ratio = adjustment_martensite_aspect_ratio if adjustment_martensite_aspect_ratio is not None else 0.0
+        adjustment_ferrite_size = adjustment_ferrite_size if adjustment_ferrite_size is not None else 0.0
+        adjustment_ferrite_aspect_ratio = adjustment_ferrite_aspect_ratio if adjustment_ferrite_aspect_ratio is not None else 0.0
+
+        # Create the label array with 7 elements
+        label_array = np.array([ferrite_percentage, martensite_percentage, num_bands,
+                                adjustment_martensite_size, adjustment_martensite_aspect_ratio,
+                                adjustment_ferrite_size, adjustment_ferrite_aspect_ratio])
+
+        # Save the label array
+        label_file_path = os.path.join(new_dir_path, 'label.npy')
+        np.save(label_file_path, label_array)
+
+        # Update the counts for number of bands
+        if num_bands == 0:
+            number_of_bands_zero += 1
+        else:
+            number_of_bands_more_than_zero += 1
+        
+        # Increase the counter of succesful processed directories
+        counter += 1
+    
+    except (IndexError, ValueError) as e:
+        print(f'Skipping {simulations_dir} due to error in Specs.txt: {e}')
+        number_of_skipped_files += 1
+    
+    return counter
 
 def traverse_directories(input_dir: str, output_dir: str) -> int:
     '''
@@ -99,9 +200,9 @@ def traverse_directories(input_dir: str, output_dir: str) -> int:
     Returns
     ----------
     counter: int
-        Number of iterations.
+        Number of succesfully processed directories.
     '''
-    counter = 1
+    counter = 0
     for dir_name in sorted(os.listdir(input_dir)):
         full_dir_path = os.path.join(input_dir, dir_name)
         counter = process_simulation_dir(full_dir_path, output_dir, counter)
