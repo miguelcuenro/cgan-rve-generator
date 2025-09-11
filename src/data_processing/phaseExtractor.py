@@ -185,6 +185,32 @@ def process_simulation_dir(simulations_dir: str, output_dir: str, counter: int) 
     
     return counter
 
+def perform_augmentation(processed_data_dir: str) -> None:
+    # Iterate over directories
+    for dirs in os.listdir(processed_data_dir):
+        sub_dir_path = os.path.join(sub_dir_path, dirs)
+        phase_file_path = = os.path.join(sub_dir_path, 'phase_grid.npy')
+        label_file_path = os.path.join(sub_dir_path, 'label.npy')
+        
+        if os.path.exists(phase_file_path) and os.path.exists(label_file_path):
+            # Load phase array and label array
+            phase_array = np.load(phase_file_path)
+            label_array = np.load(label_file_path)
+
+            # Check if the number of bands is more than 0
+            num_bands = label_array[2]
+
+            if num_bands >= 0:
+                # Perform rotations
+                for axis in range(3):
+                    rotated_array = np.rot90(phase_array, k=1, axes=(axis, (axis + 1) % 3))
+
+                    # Save the rotated array with a new name
+                    rotated_file_path = os.path.join(sub_dir_path, f'phase_grid_rotated_{axis}.npy')
+                    np.save(rotated_file_path, rotated_array)
+
+                print(f"Augmented data for {sub_dir_path}")
+
 def traverse_directories(input_dir: str, output_dir: str) -> int:
     '''
     Walk through each simulation directory in the provided base path, calling process_simulation_dir on each.
