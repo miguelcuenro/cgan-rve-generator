@@ -1,2 +1,2 @@
-source: /path/to/raw_data
-destination: /path/to/processed_data
+source: '/../../data/raw_data' # Path to the directory holding the data to be processed.
+destination: '/../../data/processed_data' # Path to the directory where the processed data should be stored.

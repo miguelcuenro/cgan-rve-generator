@@ -26,10 +26,6 @@ processed_data_dir = parameters['destination']
 if not os.path.exists(raw_data_dir):
     raise FileNotFoundError(f"Source data directory not found: {raw_data_dir}")
 
-# Raise an error if processed_data_dir was NOT found
-if not os.path.exists(processed_data_dir):
-    raise FileNotFoundError(f"Destination data directory not found: {processed_data_dir}")
-
 # Create parent directory if it does not exist
 os.makedirs(processed_data_dir, exist_ok=True)
 
@@ -192,7 +188,7 @@ def perform_augmentation(data_dir: str) -> None:
     Parameters
     ----------
     data_dir: str
-        The path to the directory holding the data to be processed.
+        The path to the directory holding the data to be augmented.
 
     Returns
     ----------
