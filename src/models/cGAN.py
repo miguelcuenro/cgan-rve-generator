@@ -90,9 +90,9 @@ class Generator(nn.Module):
         # Initial layer
         self.initial_layer = nn.Sequential(
             nn.ConvTranspose3d(
-                in_channels=1, out_channels=num_feature_maps//self.features[0],
+                in_channels=2, out_channels=num_feature_maps//self.features[0],
                 kernel_size=4, stride=2, padding=4, bias=False
-            ),
+            ), # in_channels=2 --> noise and label
             nn.BatchNorm3d(num_feature_maps//self.features[0])
         )
 
@@ -127,10 +127,15 @@ class Generator(nn.Module):
             bias=False
         )
 
-    def forward(self, z, label):
-        label = label.float() # Make sure it is the correct type
-
-        label_expanded = label.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1) # Bring the tensor to shape (1, 1, 1, 1)
-        label_expanded = label_expanded.expand (1, 1, 4, 4, 4)
-
-        z = torch.cat()
+    def forward(self, z):
+        z = self.padding(z)
+        z = self.initial_layer(z)
+        z = nn.LeakyReLU(0)(z)
+        z = self.padding(z)
+        for layer in self.hidden_layers:
+            z = nn.LeakyReLU(0)(layer(z))
+            z = self.padding(z)
+        z = nn.LeakyReLU(0)(self.final_layer(z))
+        z = self.padding(z)
+        z = torch.sigmoid(z)
+        return(z)
