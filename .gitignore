@@ -1,2 +1,3 @@
 data/*
 test
+src/models/training_log_dir/*
