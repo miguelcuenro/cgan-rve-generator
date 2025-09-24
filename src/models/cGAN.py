@@ -272,7 +272,47 @@ class DCWCGANGP:
             writer.close()
 
         print('\n' + '# -------------- #' + '\n' + 'Training complete!' + '\n' + '# -------------- #')
+    
+    def load_checkpoint(self, checkpoint_path):
+        checkpoint = torch.load(checkpoint_path, map_location=torch.device('cpu'))
 
+        print(f'Description of the model when checkpointed: {checkpoint['description']}')
+
+        # Load the generator state dict and handle missing keys
+        gen_state_dict = checkpoint['generator_state_dict']
+        current_gen_state_dict = self.gen.state_dict()
+
+        # Update the current state dict with the loaded state dict
+        for name, param in gen_state_dict.items():
+            if name in current_gen_state_dict:
+                current_gen_state_dict[name].copy_(param)
+            else:
+                print(f"Skipping {name} as it is not in the current model state dict")
+
+        # Load the updated state dict back into the model
+        self.gen.load_state_dict(current_gen_state_dict)
+
+        # Load the critic state dict and handle missing keys
+        critic_state_dict = checkpoint['discriminator_state_dict']
+        current_critic_state_dict = self.critic.state_dict()
+
+        # Update the current state dict with the loaded state dict
+        for name, param in critic_state_dict.items():
+            if name in current_critic_state_dict:
+                current_critic_state_dict[name].copy_(param)
+            else:
+                print(f"Skipping {name} as it is not in the current model state dict")
+
+            # Load the updated state dict back into the model
+        self.critic.load_state_dict(current_critic_state_dict)
+
+        # Load the optimizers state dicts
+        self.optimizerG.load_state_dict(checkpoint['optimizerG_state_dict'])
+        self.optimizerD.load_state_dict(checkpoint['optimizerD_state_dict'])
+
+    def train_from(self, checkpoint_path, save_checkpoints=False, enable_sampling=False):
+        self.load_checkpoint(checkpoint_path)
+        self.train(save_checkpoints, enable_sampling)
 
 class Critic(nn.Module):
     def __init__(self, num_channels, num_feature_maps, img_size, dis_dropout_rate):
