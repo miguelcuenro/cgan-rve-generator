@@ -5,8 +5,276 @@ import torch
 import torch.nn as nn
 
 from torch import optim
+from torch import autograd
 
-class Critic(nn.Module): # TODO: Take a look when to add the label
+class DCWCGANGP:
+    def __init__(self,
+                 directory, dataset,
+                 batch_size, num_epochs, beta1, beta2, ngpu,learning_rate_disc, learning_rate_gen, d_loop,  # hparams training
+                 lambda_penal, sigma,
+                 img_size: int, num_channels,
+                 gen_num_feature_maps, gen_dropout_rate, # particular gen init-parameters
+                dis_num_feature_maps, dis_dropout_rate  # particular critic init-parameters
+                 ):
+        
+        # Instantiate general (hyper)parameters
+        self.directory = directory
+        self.dataset = dataset  # RVEDataset = list of RVE-Objects
+
+        self.batch_size = batch_size  # How many samples per batch
+        self.num_epochs = num_epochs
+        self.beta1 = beta1
+        self.ngpu = ngpu
+        self.learning_rate_disc = learning_rate_disc
+        self.learning_rate_gen = learning_rate_gen
+        self.d_loop = d_loop
+
+        self.img_size = img_size
+        self.num_of_z = int(img_size / 8)
+        self.num_channels = num_channels
+        self.lambda_penal = lambda_penal
+        self.sigma = sigma
+
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() & (self.ngpu >= 1) else "cpu")
+
+        # Instantiate parts of the cGAN
+        self.gen = Generator(num_channels=num_channels, num_feature_maps=gen_num_feature_maps, img_size=img_size, gen_dropout_rate=gen_dropout_rate).to(self.device).double()
+        self.gen.apply(self.init_weights)
+
+        self.critic = Critic(num_channels=num_channels, num_feature_maps=dis_num_feature_maps, img_size=img_size, dis_dropout_rate=dis_dropout_rate).to(self.device).double()
+        self.critic.apply(self.init_weights)
+
+        # Load data
+        self.dataloader = torch.utils.data.DataLoader(dataset=dataset, batch_size=self.batch_size, shuffle=True, num_workers=0)
+
+        # Initialize storing variables
+        self.fixed_noise = torch.round(torch.randn(self.batch_size, self.num_channels, self.num_of_z, self.num_of_z, self.num_of_z, device=self.device).double())
+
+        self.G_losses = []
+        self.D_losses = []
+        self.step_counter = 0
+
+        # Establish convention for real and fake labels during training
+        self.real_label = 1.
+        self.fake_label = 0.
+
+        # Setup Adam optimizers for both G and D
+        self.optimizerD = optim.Adam(self.critic.parameters(), lr=learning_rate_disc, betas=(beta1, beta2))
+        self.optimizerG = optim.Adam(self.gen.parameters(), lr=learning_rate_gen, betas=(beta1, beta2))
+
+        # Store parameters
+        hparams = {
+            'batch_size':batch_size,
+            'num_epochs':num_epochs,
+            'gen_num_feature_maps':gen_num_feature_maps,
+            'gen_dropout_rate':gen_dropout_rate,
+            'dis_num_feature_maps':dis_num_feature_maps,
+            'dis_dropout_rate':dis_dropout_rate,
+            'beta1':beta1,
+            'beta2':beta2,
+            'learning_rate_disc':learning_rate_disc,
+            'learning_rate_gen':learning_rate_gen,
+            'd_loop':d_loop,
+            'lambda_penal':lambda_penal,
+            'sigma':sigma,
+            'img_size':img_size,
+            'num_channels':num_channels
+        }
+        self.hparams = str(hparams)
+
+    def init_weights(self, m):
+        classname = m.__class__.__name__
+        if classname.find('Conv') != 1:
+            nn.init.normal_(m.weight.data, 0.0, 0.02)
+        elif classname.find('BatchNorm') != -1:
+            nn.init.normal_(m.weight.data, 1.0, 0.02)
+            nn.init.constant_(m.bias.data, 0)
+
+    def compute_gradients(self, real_samples, fake_samples):
+        '''
+        return: The gradient penalty for enforcing the lipschitz continuity
+        '''
+
+        # Random weight term for interpolation between real and fake samples
+        alpha = torch.tensor(
+            np.random.random((real_samples.size(0), self.num_channels, self.img_size, self.img_size, self.img_size)),
+            device=self.device, dtype=torch.float32
+        )
+
+        real_samples = real_samples.to(device)
+
+        interpolates = (alpha * real_samples + (1 - alpha) * fake_samples).float().requires_grad_(True).double()
+        d_interpolates = self.critic(interpolates)
+
+        fake = torch.full(size=(real_samples.shape[0], 1, 1, 1, 1), fill_value=1.0, device=self.device)
+        fake.requires_grad = False
+
+        # Get gradients w.r.t. interpolates
+        gradients = autograd.grad(
+            outputs=d_interpolates,
+            inputs=interpolates,
+            grad_outputs=fake,
+            create_graph=True,
+            retain_graph=True,
+            only_inputs=True
+        )
+        gradients = gradients[0]
+        gradient_penalty = ((gradients.norm(p=2, dim=None) -1 ) ** 2).mean()
+        
+        return gradient_penalty
+
+    def train_one_epoch(self):
+        for i in batch_data in tqdm(enumerate(self.dataloader), position=0):
+            self.step_counter = epoch * len(self.dataloader) + I
+            sampling_counter += 1
+
+            data = batch_data.to(self.device)
+
+            # Create random labeled input
+            binary_noise = torch.randint(0, 2, (data.size(0), self.num_channels, self.num_of_z, self.num_of_z, self.num_of_z), device=self.device).double()
+
+            label_values = torch.rand((3, 1)) # Maybe we will have to restrain the range to [sample_min, sample_max] (let's see)
+            one_tensor = torch.ones(3, 1, 4, 4, 4)
+
+            label_values_expanded = label_values.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
+            label_tensor = one_tensor * label_values_expanded
+
+            z = torch.cat([binary_noise, label_tensor], dim=1)
+
+            fake_imgs = self.gen.forward(z)
+
+            if epoch == 51:
+                sampling_freq = 500 # Laut Xavi hier aufpassen (why???)
+
+            # Sample the output of the generator
+            if sampling_counter % sampling_freq == 0 and enable_sampling == True:
+                step = self.step_counter
+
+                sample = fake_imgs[0].detach().cpu().numpy()
+                
+                filename = f'{step}th_sample_' + str(timestamp)
+                full_path = os.path.join(sample_dir, filename)
+                np.save(full_path, sample)
+
+                with torch.no_grad():
+                    fake = self.gen.forward(self.fixed_noise)[0].detach().cpu().numpy()
+
+                    filename = f'{step}th_f_sample_' + str(timestamp)
+                    full_path = os.path.join(sample_dir, filename)
+                    np.save(full_path, fake)
+
+                vu.visualize_and_log_to_tensorboard(tag='Sample/z', tensor=fake, step=step, writer=writer)
+                vu.visualize_and_log_to_tensorboard(tag='Sample/fixed', tensor=fake, step=step, writer=writer)
+
+            # Adapt the d-loop after some time
+            if (epoch * len(self.dataloader) + i) > 5000:
+                self.d_loop = 5
+
+            # Training the DISCRIMINATOR
+            for j in range(self.d_loop):
+                self.critic.zero_grad()
+
+                # Real data
+                outputs_real = self.critic.forward(data)
+                d_loss_real = torch.mean(outputs_real)
+
+                # Fake data
+                outputs_fake = self.critic.forward(fake_imgs.detach())
+                d_loss_fake = torch.mean(outputs_fake)
+
+                # Save discriminator loss
+                d_loss = -(d_loss_reall - d_loss_fake)
+                self.D_losses.append(d_loss)
+
+                gradient_penalty = self.compute_gradients(real_samples=data, fake_samples=fake_imgs.detach()) * self.lambda_penal
+
+                if save_checkpoints == True:
+                    writer.add_scalar('Loss/D_real', d_loss_real.item(), global_step=epoch*len(self.dataloader))
+                    writer.add_scalar('Loss/D_fake', d_loss_fake.item(), global_step=epoch * len(self.dataloader) + i)
+                    writer.add_scalar('Loss/Critic', d_loss.item(), global_step=epoch * len(self.dataloader) + i)
+                    writer.add_scalar('GP', gradient_penalty.item(), global_step=epoch*len(self.dataloader)+i)
+                
+                total_d_loss = d_loss + gradient_penalty
+                total_d_loss.backward()
+                self.optimizerD.step()
+
+            # Training the GENERATOR
+            self.gen.zero_grad()
+
+            outputs = self.critic.forward(fake_imgs)
+            
+            # Save the generator's loss
+            g_loss = -(torch.mean(outputs))
+            self.G_losses.append(g_loss)
+
+            statistical_penalty = 0
+
+            if save_checkpoints == True:
+                writer.add_scalar('Loss/Generator', g_loss.item(), global_step=epoch*len(self.dataloader)+i)
+                writer.add_scalar('Loss/Statistical', statistical_penalty.item(), global_step=epoch*len(self.dataloader)+i)
+            
+            total_g_loss = g_loss + statistical_penalty
+            total_g_loss.backward()
+            self.optimizerG.step()
+
+
+    def train(self, save_checkpoints=False, enable_sampling=False):
+         print('\n' + "# ----------------- #" + '\n' + "Starting training..." + '\n' + "# ----------------- #")
+
+         if save_checkpoints == True:
+            # Create unique directories for sampling and logging
+            train_start = datetime.datetime.now()
+            timestamp = train_start.strftime("%Y-%m-%d_%H-%M-%S")
+
+            training_log_dir = os.path.join(os.path.expanduser("/training_logs"), timestamp)
+            os.makedirs(sample_dir, exist_ok=True)
+
+            sample_dir = os.path.join(training_log_dir, 'sample_dir') # I am under the impression we do not sample
+            checkpoint_dir = os.path.join(training_log_dir, 'checkpoint_dir')
+            os.makedirs(checkpoint_dir, exist_ok=True)
+            os.makedirs(sample_dir, exist_ok=True)
+
+            sampling_freq = 150 # Again: Do we use this?
+
+            writer = SummaryWriter(log_dir=training_log_dir)
+            writer.add_text('Training Info', f'Start Time: {train_start.strftime('%Y-%m-%d %H:%M:%S')}', 0)
+            writer.add_text('Hyperparameters', self.hparams, global_step=0)
+            writer.add_text('Special Comments', self.description, global_step=0)
+            sampling_counter = -1
+
+        for epoch in range(self.num_epochs):
+                print('Epoch: ', epoch)
+                train_one_epoch(epoch)
+
+            if ((epoch == self.num_epochs - 1) or ((epoch % 100 == 0) and (epoch != 0)) or self.step_counter % 1000 == 0) and save_checkpoints == True:
+                checkpoint_path = os.path.join(checkpoint_dir, f'checkpoint_epoch_{epoch+1}.pth')
+                checkpoint = {
+                    'epoch': epoch + 1,
+                    'generator_state_dict': self.gen.state_dict(),
+                    'discriminator_state_dict':self.critic.state_dict(),
+                    'generator_loss': self.G_losses[-1],
+                    'discriminator_loss': self.D_losses[-1],
+                    'optimizerG_state_dict': self.optimizerG_state_dict(),
+                    'optimizerD_state_dict': self.optimizerD.state_dict(),
+                    'description': self.description,
+                }
+            
+                torch.save(checkpoint, checkpoint_path)
+                print(f'Checkpoint saved at epoch {epoch+1} to {checkpoint_path}')
+        if save_checkpoints == True:
+            train_end = datetime.datetime.now()
+            duration = train_end - train_start
+            duration_str = str(timedelta(seconds=duration.seconds))
+            writer.add_text("Training Info", f"End Time: {train_end.strftime('%Y-%m-%d %H:%M:%S')}", 0)
+            writer.add_text("Training Info", f"Duration: {duration_str}", 0)
+            writer.add_scalar("Training Duration", duration.seconds, 0)
+
+            writer.close()
+
+        print('\n' + '# -------------- #' + '\n' + 'Training complete!' + '\n' + '# -------------- #')
+
+
+class Critic(nn.Module):
     def __init__(self, num_channels, num_feature_maps, img_size, dis_dropout_rate):
         super().__init__()
         self.num_channels = num_channels
@@ -138,4 +406,4 @@ class Generator(nn.Module):
         z = nn.LeakyReLU(0)(self.final_layer(z))
         z = self.padding(z)
         z = torch.sigmoid(z)
-        return(z)
+        return z
