@@ -1,7 +1,7 @@
 
 import numpy as np
 import pyvista as pv
-import torchy
+import torch
 
 from matplotlib.colors import ListedColormap
 from torch.utils.tensorboard import SummaryWriter
