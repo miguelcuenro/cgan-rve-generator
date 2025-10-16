@@ -1,0 +1,29 @@
+dataroot: "../../data/processed_data" # Path to root directory
+num_of_workers: 1 # Number of simultaneous loads of data into the RAM
+batch_size: 64  # Batch size during training
+img_size: 32 # Spatial size of the training volumes. Every volume will be resized to this
+num_channels: 1 # Number of channels in the training samples
+gen_num_feature_maps: 16  # Number of feature maps in the generator
+gen_dropout_rate: 0
+dis_num_feature_maps: 8  # Number of feature maps in the discriminator
+dis_dropout_rate: 0
+num_epochs: 500 # Number of training epochs
+
+# learning rate for the optimizers
+learning_rate_disc: 0.0002
+learning_rate_gen: 0.00008
+
+d_loop: 10 # factor which decides how many times the critic is trained for each gen training step
+
+# beta hyperparameters for the Adam optimizer
+beta1: 0.65
+beta2: 0.8
+
+ngpu: 1 # number of available gpus, 0 for cpu mode
+lambda_penal: 10 # lambda multiplier for the gradient penalty
+sigma: (10 ** 3)  # maybe dynamic?
+
+from_checkpoint: 0
+save_checkpoints: 0
+enable_sampling: 0
+checkpoint: './training_logs/your_checkpoint'
