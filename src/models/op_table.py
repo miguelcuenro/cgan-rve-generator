@@ -1,13 +1,10 @@
+import cGAN as gan_sourcecode
 import torch
-import yaml
-import os
 import numpy as np
+import os
 from torch.utils.data import Dataset, DataLoader
-import cGAN
-import pyvista as pv
 
-torch.cuda.empty_cache()  # Wegen Grafikspeicher auf dem Cluster
-pv.start_xvfb()  # für Screenshot auf dem Cluster
+torch.cuda.empty_cache()
 
 # --------------- #
 # SETUP WORKFRAME #
@@ -47,8 +44,8 @@ def load_data(npy_files):
     for file_path in npy_files:
         npy_data = np.load(file_path, allow_pickle=True)  # Allow loading pickled data
 
-        if npy_data.size == img_size ** 3:
-            reshaped_array = npy_data.reshape(1, num_channels, img_size, img_size, img_size)
+        if npy_data.size == image_size ** 3:
+            reshaped_array = npy_data.reshape(1, num_channels, image_size, image_size, image_size)
             data_list.append(reshaped_array)
 
             # Find the corresponding label.npy file
@@ -80,6 +77,11 @@ def load_data(npy_files):
     labels_tensor = torch.from_numpy(labels_np).double()
 
     return CustomDataset(data_tensor, labels_tensor)
+
+def log_memory_usage(step):
+    allocated_memory = torch.cuda.memory_allocated()
+    reserved_memory = torch.cuda.memory_reserved()
+    print(f"Step {step}: Allocated memory: {allocated_memory} bytes, Reserved memory: {reserved_memory} bytes")
 
 # ---------------- #
 # HYPER PARAMETERS #
@@ -116,19 +118,51 @@ sigma = parameters['sigma']
 npy_files = find_npy_files(dataroot)
 dataset = load_data(npy_files)
 
-# ----------------------- #
-# CREATE GAN AND TRAIN IT #
-# ----------------------- #
-cgan = cGAN.DCWCGANGP(directory=dataroot,
-                            dataset=dataset,
-                            batch_size=batch_size, num_epochs=num_epochs, beta1=beta1, beta2=beta2, ngpu=ngpu,
-                            learning_rate_disc=learning_rate_disc, learning_rate_gen=learning_rate_gen,
-                            d_loop=d_loop, lambda_penal=lambda_penal, sigma=sigma,
-                            img_size=img_size, num_channels=num_channels,
-                            gen_num_feature_maps=gen_num_feature_maps, gen_dropout_rate=gen_dropout_rate,
-                            dis_num_feature_maps=dis_num_feature_maps, dis_dropout_rate=dis_dropout_rate)
+checkpoint = parameters['checkpoint']
 
-if parameters['from_checkpoint'] == False:
-    cgan.train(save_checkpoints=parameters['save_checkpoints'], enable_sampling=parameters['enable_sampling'])
-else:
-    cgan.train_from(os.path.expanduser(parameters['checkpoint']))
+operated_cgan = cGAN.DCWCGANGP(directory=dataroot,
+                                    dataset=dataset,
+                                    batch_size=batch_size, num_epochs=num_epochs, beta1=beta1, beta2=beta2, ngpu=ngpu,
+                                    learning_rate_disc=learning_rate_disc, learning_rate_gen=learning_rate_gen,
+                                    d_loop=d_loop, lambda_penal=lambda_penal, sigma=sigma,
+                                    img_size=img_size, num_channels=num_channels,
+                                    gen_num_feature_maps=gen_num_feature_maps, gen_dropout_rate=gen_dropout_rate,
+                                    dis_num_feature_maps=dis_num_feature_maps, dis_dropout_rate=dis_dropout_rate)
+
+print(len(dataset))
+print(operated_cgan.device)
+print(operated_cgan.description)
+
+torch.cuda.empty_cache()
+
+# Load the checkpoint
+operated_cgan.load_checkpoint(checkpoint_path=checkpoint)
+print("Loaded the checkpoint!")
+
+# Perform analysis with memory management
+torch.cuda.empty_cache()
+
+# Setup the sampling directory
+root = os.path.join(parameters['root'], datetime.datetime.now()strftime("%Y-%m-%d_%H-%M-%S"))
+os.makedirs(root, exist_ok=True)
+
+# Z IS WROOOOONG!!! CHANGE IT MIGUELON
+number_of_samples = parameters['number_of_samples']
+
+for i in range(n):
+    binary_noise = torch.randn(operated_cgan.batch_size, operated_cgan.num_channels, operated_cgan.num_of_z, operated_cgan.num_of_z,
+                        operated_cgan.num_of_z, device=operated_cgan.device).double()
+    
+    label_values = torch.rand((operated_cgan.batch_size, 1))
+    one_tensor = torch.ones(operated_cgan.batch_size, 1, operated_cgan.num_of_z, operated_cgan.num_of_z, operated_cgan.num_of_z)
+
+    label_values_expanded = label_values.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
+    label_tensor = one_tensor * label_values_expanded
+
+    z = torch.cat([binary_noise, label_tensor], dim=1)
+
+    generated_img_raw = operated_cgan.gen(z)
+    generated_img_clean = torch.round(generated_img_raw)
+    filename = f"number_{i}"
+    save_path = os.path.join(root, filename)
+    np.save(save_path, generated_img_clean[0].detach().numpy())

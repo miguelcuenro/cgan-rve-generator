@@ -55,7 +55,15 @@ class DCWCGANGP:
         self.dataloader = torch.utils.data.DataLoader(dataset=dataset, batch_size=self.batch_size, shuffle=True, num_workers=0)
 
         # Initialize storing variables
-        self.fixed_noise = torch.round(torch.randn(self.batch_size, self.num_channels, self.num_of_z, self.num_of_z, self.num_of_z, device=self.device).double())
+        fixed_label = torch.rand((self.batch_size, 1)) # Maybe we will have to restrain the range to [sample_min, sample_max] (let's see)
+        fixed_one_tensor = torch.ones(self.batch_size, 1, self.num_of_z, self.num_of_z, self.num_of_z)
+
+        fixed_label_expanded = fixed_label.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
+        fixed_label_tensor = fixed_one_tensor * fixed_label_expanded
+
+        fixed_z = torch.round(torch.randn(self.batch_size, self.num_channels, self.num_of_z, self.num_of_z, self.num_of_z, device=self.device).double())
+
+        self.fixed_noise = torch.cat([fixed_z, fixed_label_tensor], dim=1)
 
         self.G_losses = []
         self.D_losses = []
@@ -134,24 +142,28 @@ class DCWCGANGP:
     def train(self, save_checkpoints=False, enable_sampling=False):
         print('\n' + "# ----------------- #" + '\n' + "Starting training..." + '\n' + "# ----------------- #")
         
+        train_start = datetime.datetime.now()
+        timestamp = train_start.strftime("%Y-%m-%d_%H-%M-%S")
+        training_log_dir = os.path.join(os.path.expanduser("training_logs"), timestamp)
+        sample_dir = os.path.join(training_log_dir, "sample_dir")
+
         if save_checkpoints == True:
             # Create unique directories for sampling and logging
-            train_start = datetime.datetime.now()
-            timestamp = train_start.strftime("%Y-%m-%d_%H-%M-%S")
+            #os.makedirs(training_log_dir, exist_ok=True)
 
-            training_log_dir = os.path.join(os.path.expanduser("/training_logs"), timestamp)
-            os.makedirs(sample_dir, exist_ok=True)
-
-            sample_dir = os.path.join(training_log_dir, 'sample_dir') # I am under the impression we do not sample
+            #sample_dir = os.path.join(training_log_dir, 'sample_dir') # I am under the impression we do not sample
             checkpoint_dir = os.path.join(training_log_dir, 'checkpoint_dir')
             os.makedirs(checkpoint_dir, exist_ok=True)
-            os.makedirs(sample_dir, exist_ok=True)
+            #os.makedirs(sample_dir, exist_ok=True)
 
             writer = SummaryWriter(log_dir=training_log_dir)
             writer.add_text('Training Info', f'Start Time: {train_start.strftime('%Y-%m-%d %H:%M:%S')}', 0)
             writer.add_text('Hyperparameters', self.hparams, global_step=0)
-            writer.add_text('Special Comments', self.description, global_step=0)
+            #writer.add_text('Special Comments', self.description, global_step=0)
         
+        if enable_sampling == True:
+            os.makedirs(sample_dir, exist_ok=True)
+
         sampling_freq = 150 # Again: Do we use this?
         sampling_counter = -1
         
@@ -210,7 +222,7 @@ class DCWCGANGP:
                     self.d_loop = 5
 
                 # Concatenate CRITIC input
-                labels_expanded = labels[:, 0].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
+                labels_expanded = labels[:, 0].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).unsqueeze(-1) / 100 # Maybe it is better to normalize them from 0 to 1 (let's see)
                 input_labels = img_one_tensor * labels_expanded
                 input_data = torch.cat([data, input_labels], dim=1)
                 
@@ -255,13 +267,14 @@ class DCWCGANGP:
 
                 if save_checkpoints == True:
                     writer.add_scalar('Loss/Generator', g_loss.item(), global_step=epoch*len(self.dataloader)+i)
-                    writer.add_scalar('Loss/Statistical', statistical_penalty.item(), global_step=epoch*len(self.dataloader)+i)
+                    writer.add_scalar('Loss/Statistical', 0, #statistical_penalty.item(),
+                     global_step=epoch*len(self.dataloader)+i)
                 
                 total_g_loss = g_loss + statistical_penalty
                 total_g_loss.backward()
                 self.optimizerG.step()
 
-            if ((epoch == self.num_epochs - 1) or ((epoch % 100 == 0) and (epoch != 0)) or self.step_counter % 1000 == 0) and save_checkpoints == True:
+            if ((epoch == self.num_epochs - 1) or ((epoch % 100 == 0) and (epoch != 0)) or self.step_counter % 1000 == 0) and save_checkpoints == True: # change epoch % 100 == 0 back to 100
                 checkpoint_path = os.path.join(checkpoint_dir, f'checkpoint_epoch_{epoch+1}.pth')
                 checkpoint = {
                     'epoch': epoch + 1,
@@ -269,9 +282,9 @@ class DCWCGANGP:
                     'discriminator_state_dict':self.critic.state_dict(),
                     'generator_loss': self.G_losses[-1],
                     'discriminator_loss': self.D_losses[-1],
-                    'optimizerG_state_dict': self.optimizerG_state_dict(),
-                    'optimizerD_state_dict': self.optimizerD.state_dict(),
-                    'description': self.description,
+                    'optimizerG_state_dict': self.optimizerG.state_dict(),
+                    'optimizerD_state_dict': self.optimizerD.state_dict()#,
+                    #'description': self.description,
                 }
             
                 torch.save(checkpoint, checkpoint_path)
@@ -292,7 +305,7 @@ class DCWCGANGP:
     def load_checkpoint(self, checkpoint_path):
         checkpoint = torch.load(checkpoint_path, map_location=torch.device('cpu'))
 
-        print(f'Description of the model when checkpointed: {checkpoint['description']}')
+        print('\n' + '# -------------- #' + '\n' + 'Model loaded succesfully!' + '\n' + '# -------------- #')
 
         # Load the generator state dict and handle missing keys
         gen_state_dict = checkpoint['generator_state_dict']
@@ -319,7 +332,7 @@ class DCWCGANGP:
             else:
                 print(f"Skipping {name} as it is not in the current model state dict")
 
-            # Load the updated state dict back into the model
+        # Load the updated state dict back into the model
         self.critic.load_state_dict(current_critic_state_dict)
 
         # Load the optimizers state dicts
@@ -503,8 +516,8 @@ def load_data(npy_files):
     for file_path in npy_files:
         npy_data = np.load(file_path, allow_pickle=True)  # Allow loading pickled data
 
-        if npy_data.size == image_size ** 3:
-            reshaped_array = npy_data.reshape(1, num_channels, image_size, image_size, image_size)
+        if npy_data.size == img_size ** 3:
+            reshaped_array = npy_data.reshape(1, num_channels, img_size, img_size, img_size)
             data_list.append(reshaped_array)
 
             # Find the corresponding label.npy file
@@ -545,7 +558,7 @@ if __name__ == "__main__":
     # Batch size during training
     batch_size = 8  # TODO should this be increased?, # TODO2 research and experiment
     # Spatial size of the training volumes. Every volume will be resized to this
-    image_size = 32
+    img_size = 32
     # Number of channels in the training samples, is 1 here because we only look at orientation, but could be increased when
     # we add phases etc.
     num_channels = 1
@@ -588,7 +601,7 @@ if __name__ == "__main__":
                         batch_size, num_epochs, beta1, beta2, ngpu, learning_rate_disc, learning_rate_gen, d_loop,
                         # hyperparameters for training
                         lambda_penal, sigma,
-                        image_size, num_channels,  # size parameters
+                        img_size, num_channels,  # size parameters
                         gen_num_feature_maps, gen_dropout_rate,  # particular gen init-parameters
                         dis_num_feature_maps, dis_dropout_rate)  # particular critic init-parameters)
 

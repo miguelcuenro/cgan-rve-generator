@@ -1,3 +1,4 @@
 data/*
 test
-src/models/training_log_dir/*
+src/models/training_logs/*
+src/models/.*
