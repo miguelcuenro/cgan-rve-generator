@@ -1,6 +1,6 @@
 dataroot: "../../data/processed_data" # Path to root directory
 num_of_workers: 1 # Number of simultaneous loads of data into the RAM
-batch_size: 64  # Batch size during training
+batch_size: 8 #64  # Batch size during training
 img_size: 32 # Spatial size of the training volumes. Every volume will be resized to this
 num_channels: 1 # Number of channels in the training samples
 gen_num_feature_maps: 16  # Number of feature maps in the generator
@@ -28,4 +28,7 @@ save_checkpoints: 0
 enable_sampling: 0
 checkpoint: './training_logs/2025-10-22_17-36-24/checkpoint_dir/checkpoint_epoch_6.pth'
 
-# root: './sampling_dir/' I do not think I need this :)
+number_of_samples: 16
+root: './rve/'
+
+sampling_dir: './rve/2025-10-26_15-51-11'

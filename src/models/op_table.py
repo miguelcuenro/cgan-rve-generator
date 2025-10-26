@@ -1,8 +1,10 @@
-import cGAN as gan_sourcecode
+import cGAN
 import torch
 import numpy as np
 import os
 from torch.utils.data import Dataset, DataLoader
+import yaml
+import datetime
 
 torch.cuda.empty_cache()
 
@@ -44,8 +46,8 @@ def load_data(npy_files):
     for file_path in npy_files:
         npy_data = np.load(file_path, allow_pickle=True)  # Allow loading pickled data
 
-        if npy_data.size == image_size ** 3:
-            reshaped_array = npy_data.reshape(1, num_channels, image_size, image_size, image_size)
+        if npy_data.size == img_size ** 3:
+            reshaped_array = npy_data.reshape(1, num_channels, img_size, img_size, img_size)
             data_list.append(reshaped_array)
 
             # Find the corresponding label.npy file
@@ -131,7 +133,7 @@ operated_cgan = cGAN.DCWCGANGP(directory=dataroot,
 
 print(len(dataset))
 print(operated_cgan.device)
-print(operated_cgan.description)
+#print(operated_cgan.description)
 
 torch.cuda.empty_cache()
 
@@ -143,13 +145,13 @@ print("Loaded the checkpoint!")
 torch.cuda.empty_cache()
 
 # Setup the sampling directory
-root = os.path.join(parameters['root'], datetime.datetime.now()strftime("%Y-%m-%d_%H-%M-%S"))
+root = os.path.join(parameters['root'], datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
 os.makedirs(root, exist_ok=True)
 
 # Z IS WROOOOONG!!! CHANGE IT MIGUELON
 number_of_samples = parameters['number_of_samples']
 
-for i in range(n):
+for i in range(number_of_samples):
     binary_noise = torch.randn(operated_cgan.batch_size, operated_cgan.num_channels, operated_cgan.num_of_z, operated_cgan.num_of_z,
                         operated_cgan.num_of_z, device=operated_cgan.device).double()
     
