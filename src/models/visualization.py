@@ -66,9 +66,8 @@ def visualize_tensor(tensor, colormap='gist_earth', show_on_screen=True):
     # Render the volume using PyVista
     plotter = pv.Plotter(off_screen=False)
     plotter.add_mesh(grid, cmap=colormap)
-    plotter.show(full_screen=False)
+    #plotter.show(full_screen=False)
     return plotter
-
 
 # Load the parameters file
 with open('parameters.yaml', 'r') as dictionary:
@@ -79,4 +78,4 @@ sampling_dir = parameters['sampling_dir']
 for filename in os.listdir(sampling_dir):
     npy_file = np.load(os.path.join(sampling_dir, filename))
     tensor = torch.from_numpy(npy_file)
-    visualize_tensor(tensor).save_graphic(f'rve_plot_{filename.split('_')[1].split('.')[0]}.pdf')
+    visualize_tensor(tensor).save_graphic(sampling_dir + f'/rve_plot_{filename.split('_')[1].split('.')[0]}.pdf')

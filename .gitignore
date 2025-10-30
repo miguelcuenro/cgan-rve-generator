@@ -1,4 +1,6 @@
 data/*
 test
 src/models/training_logs/*
+src/models/rve
+src/models/__pycache__
 src/models/.*
