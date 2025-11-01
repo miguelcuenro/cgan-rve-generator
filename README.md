@@ -37,7 +37,7 @@ On the other side, accessing all the functionalities of the cGAN requires an exp
 
 #### 3. Generating RVEs
 
-Once the training of the cGAN (notice this denomination implies a hard earned friendship) is over, one can generate RVEs with `src/models/op_table.py`. The script is runned as usual, which makes use of the same parameter file as before (`src/models/parameters.yml`). I now, will introduce some of the required parameters:
+Once the training of the cGAN (notice this denomination implies a hard earned friendship) is over, one can generate RVEs with `src/models/op_table.py`. The script is runned as usual, which makes use of the same parameter file as before (`src/models/parameters.yml`). I will now introduce some of the required parameters:
 
 | Parameter  | Description |
 | ------------- | ------------- |
