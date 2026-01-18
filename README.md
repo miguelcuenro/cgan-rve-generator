@@ -1,6 +1,6 @@
 # Generating RVE's with a cGAN
 
-This repository contains code and resources for generating three-dimensional Representative Volume Elements (RVEs) with predefined material characteristics using a conditional Generative Adversarial Network (cGAN)... or at least it should :)
+This repository contains code and resources for generating three-dimensional Representative Volume Elements (RVEs) with predefined material characteristics using a conditional Generative Adversarial Network (cGAN for friends)... or at least it should :)
 
 ## Getting Started
 
@@ -25,7 +25,7 @@ The first step is to preprocess the data with `src/data_processing/phaseExtracto
 
 TL;DR, To train the neural network the only thing you have to do is run `src/models/cgan_creator.py`.
 
-On the other side, accessing all the functionalities of the cGAN requires an explanation a little more extensive. Besides the countless hyperparameters there are a few interesting parameters I will explain in the following table:
+On the other side, accessing all the functionalities of the cGAN requires a little more extensive explanation. Besides the countless hyperparameters there are a few interesting parameters I will explain in the following table:
 
 | Parameter  | Description |
 | ------------- | ------------- |
@@ -49,9 +49,9 @@ Once the training of the cGAN (notice this denomination implies a hard earned fr
 
 If, after the generation, you desire to visualize the data this is also possible! Run `visualization.py` to read the information of the generated RVEs and generate a 3D graphic of it. This script uses the same `src/models/parameters` file (again) and reads the data stored under the directory given by the parameter `sampling_dir`.
 
-## Disclaimer
+## Final notes
 
-I am well aware, this code is far from perfect, but I am still working on it.
+Congratulations! You have (very likely) been succesful at implementing the code to generate your own synthetic RVEs. However, I'd like to get the following out of my chest: I am well aware, this code is far from perfect, but I am still working on it.
 
 Further changes will include:
 * Ensuring the cGAN works properly (I did not have the chance to try it yet as I am having trouble with the HPC)
