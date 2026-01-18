@@ -62,7 +62,7 @@ Further changes will include:
 
 ## Help
 
-If there are any issues, please do not doubt on contacting me. :)
+If there are any issues, please do not hesitate on contacting me. :)
 
 ## Authors
 
