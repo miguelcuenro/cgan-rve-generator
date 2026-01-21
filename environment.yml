@@ -1,6 +1,6 @@
 name: env-cgan
 channels:
-  - defaults
+  - conda-forge
 dependencies:
   - jupyter
   - matplotlib
