@@ -7,3 +7,5 @@ src/models/.*
 src/.DS_Store
 scripts/*
 core*
+__pycache__/
+*.pyc

@@ -3,9 +3,11 @@ channels:
   - conda-forge
 dependencies:
   - jupyter
+  - python
+  - pyvista
   - matplotlib
   - numpy
-  - python
   - pytorch
-  - conda-forge::pyvista
-prefix: /opt/anaconda3/envs/env-cgan
+  - tqdm
+  - tensorboard
+prefix: /rwthfs/rz/cluster/home/vi113507/miniforge3/envs/env-cgan
