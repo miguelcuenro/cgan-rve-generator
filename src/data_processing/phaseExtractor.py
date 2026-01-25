@@ -16,7 +16,7 @@ required_keys = ['source', 'destination']
 missing_keys = [key for key in required_keys if key not in parameters]
 
 if missing_keys:
-    raise KeyError(f"Missing required keys in config.yaml: {missing_keys}")
+    raise KeyError(f"Missing keys required in config.yaml: {missing_keys}")
 
 # Path to the data folders
 raw_data_dir = parameters['source']
@@ -26,7 +26,7 @@ processed_data_dir = parameters['destination']
 if not os.path.exists(raw_data_dir):
     raise FileNotFoundError(f"Source data directory not found: {raw_data_dir}")
 
-# Create parent directory if it does not exist
+# Create processed data directory if it does not exist
 os.makedirs(processed_data_dir, exist_ok=True)
 
 # Initialize counts
@@ -42,7 +42,7 @@ def process_simulation_dir(simulations_dir: str, output_dir: str, counter: int) 
     Processes the simulation directory:
     - Checks for required files
     - Extracts and converts phase information
-    - Loads simulation specs. and creates a label vector
+    - Loads simulation specs and creates a label vector
     - Saves results to structured subdirectories
 
     Parameters
@@ -90,7 +90,7 @@ def process_simulation_dir(simulations_dir: str, output_dir: str, counter: int) 
             phase_list.append(1)
 
     grid = pv.read(simulations_dir + '/grid.vti')
-    phase_array = np.zeros(grid['material'].__len__())
+    phase_array = np.zeros(len(grid['material']))
 
     # Check  if the phase array can be reshaped to 32x32x32
     if phase_array.size != 32 * 32 * 32:
