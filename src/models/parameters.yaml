@@ -26,9 +26,9 @@ sigma: (10 ** 3)  # maybe dynamic?
 from_checkpoint: 0
 save_checkpoints: 1
 enable_sampling: 0
-checkpoint: './training_logs/2025-10-22_17-36-24/checkpoint_dir/checkpoint_epoch_6.pth'
+checkpoint: '../src/models/training_logs/2026-01-25_09-04-27/checkpoint_dir/checkpoint_epoch_300.pth'
 
 number_of_samples: 16
-root: './rve/'
+root: '../src/models/rve/'
 
-sampling_dir: './rve/2025-10-26_15-51-11'
+sampling_dir: './rve/2026-01-25_09-04-27'
