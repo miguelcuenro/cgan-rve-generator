@@ -51,8 +51,13 @@ def visualize_and_log_to_tensorboard(tag, tensor, step, writer, colormap='gist_e
     # img_tensor = torch.tensor(img_tensor, dtype=torch.float32) / 255.0  # Normalize to [0, 1]
     writer.add_image(tag, img_tensor, global_step=step, dataformats='CHW')
 
-def visualize_npy_file(filepath, colormap='gist_earth'):
-    npy_data = np.load(filepath)
+def visualize_npy_file2(filepath, colormap='gist_earth'):
+    vti_reader = pv.get_reader(filepath)
+    vti_data = vti_reader.read()
+    vti_data = vti_data.cast_to_unstructured_grid()
+    vti_array = pv.cell_array(vti_data, 0).reshape((64, 64, 64))
+
+    npy_data = np.array(vti_array)
     grid = pv.ImageData(dimensions=(npy_data.shape[0] + 1, npy_data.shape[1] + 1, npy_data.shape[2] + 1),
                         spacing=(1, 1, 1))
     grid.cell_data["values"] = npy_data.flatten(order="F")  # Assigning the cell data
