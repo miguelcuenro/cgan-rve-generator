@@ -9,3 +9,4 @@ scripts/*
 core*
 __pycache__/
 *.pyc
+*parameters.yaml
