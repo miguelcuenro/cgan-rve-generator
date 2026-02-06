@@ -11,7 +11,7 @@ from datetime import timedelta
 from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
 
-sys.path.append(os.path.abspath('../utils'))
+sys.path.append(os.path.abspath('src/utils'))
 import visualization_utils as vu
 
 class DCWCGANGP:
