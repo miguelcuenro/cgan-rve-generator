@@ -108,7 +108,7 @@ def visualize_tensor(tensor, colormap='gist_earth', show_on_screen=True):
     grid.cell_data["values"] = tensor.flatten(order='F')  # Flatten the tensor in Fortran order
 
     # Render the volume using PyVista
-    plotter = pv.Plotter(off_screen=False)
+    plotter = pv.Plotter(off_screen=True)
     plotter.add_mesh(grid, cmap=colormap)
     plotter.show(full_screen=False)
     return plotter
