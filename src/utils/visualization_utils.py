@@ -110,5 +110,6 @@ def visualize_tensor(tensor, colormap='gist_earth', show_on_screen=True):
     # Render the volume using PyVista
     plotter = pv.Plotter(off_screen=True)
     plotter.add_mesh(grid, cmap=colormap)
-    plotter.show(full_screen=False)
-    return plotter
+    img = plotter.screenshot()
+    plotter.close()  # Cleanup
+    return img
