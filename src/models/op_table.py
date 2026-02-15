@@ -151,12 +151,15 @@ os.makedirs(root, exist_ok=True)
 # Z IS WROOOOONG!!! CHANGE IT MIGUELON
 number_of_samples = parameters['number_of_samples']
 
+# Store list of assigned labels
+label_list = []
+
 for i in range(number_of_samples):
-    binary_noise = torch.randn(operated_cgan.batch_size, operated_cgan.num_channels, operated_cgan.num_of_z, operated_cgan.num_of_z,
+    binary_noise = torch.randn(1, operated_cgan.num_channels, operated_cgan.num_of_z, operated_cgan.num_of_z,
                         operated_cgan.num_of_z, device=operated_cgan.device).double()
     
-    label_values = torch.rand((operated_cgan.batch_size, 1))
-    one_tensor = torch.ones(operated_cgan.batch_size, 1, operated_cgan.num_of_z, operated_cgan.num_of_z, operated_cgan.num_of_z)
+    label_values = torch.rand((1, 1))
+    one_tensor = torch.ones(1, 1, operated_cgan.num_of_z, operated_cgan.num_of_z, operated_cgan.num_of_z)
 
     label_values_expanded = label_values.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
     label_tensor = one_tensor * label_values_expanded
@@ -168,3 +171,10 @@ for i in range(number_of_samples):
     filename = f"number_{i}"
     save_path = os.path.join(root, filename)
     np.save(save_path, generated_img_clean[0].detach().numpy())
+
+    label_list.append(label_values[0].item())
+
+# Store the labels
+filename = "labels"
+save_path = os.path.join(root, filename)
+np.save(save_path, np.array(label_list))
