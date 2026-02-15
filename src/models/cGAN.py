@@ -167,8 +167,9 @@ class DCWCGANGP:
         sampling_freq = 150 # Again: Do we use this?
         sampling_counter = -1
         
-        for epoch in range(self.num_epochs):
-            print('Epoch: ', epoch)
+        start_epoch = getattr(self, 'start_epoch', 0)  # default to 0 if not set
+        for epoch in range(start_epoch, self.num_epochs):
+            print('Epoch: ', epoch+1)
             for i, batch in tqdm(enumerate(self.dataloader), position=0):
                 batch_data, batch_labels = batch  # Unpack the batch tuple
                 self.step_counter = epoch * len(self.dataloader) + i
@@ -274,7 +275,7 @@ class DCWCGANGP:
                 total_g_loss.backward()
                 self.optimizerG.step()
 
-            if ((epoch == self.num_epochs - 1) or ((epoch % 100 == 0) and (epoch != 0)) or self.step_counter % 1000 == 0) and save_checkpoints == True: # change epoch % 100 == 0 back to 100
+            if ((epoch == self.num_epochs - 1) or ((epoch % 100 == 0) and (epoch != 0)) or (self.step_counter % 1000 == 0)) and save_checkpoints == True: # change epoch % 100 == 0 back to 100
                 checkpoint_path = os.path.join(checkpoint_dir, f'checkpoint_epoch_{epoch+1}.pth')
                 checkpoint = {
                     'epoch': epoch + 1,
@@ -338,6 +339,10 @@ class DCWCGANGP:
         # Load the optimizers state dicts
         self.optimizerG.load_state_dict(checkpoint['optimizerG_state_dict'])
         self.optimizerD.load_state_dict(checkpoint['optimizerD_state_dict'])
+
+        # Last recorded epoch
+        self.start_epoch = checkpoint.get('epoch', 0)
+        print(f"Resuming training from epoch {self.start_epoch}")
 
     def train_from(self, checkpoint_path, save_checkpoints=False, enable_sampling=False):
         self.load_checkpoint(checkpoint_path)

@@ -131,4 +131,4 @@ cgan = cGAN.DCWCGANGP(directory=dataroot,
 if parameters['from_checkpoint'] == False:
     cgan.train(save_checkpoints=parameters['save_checkpoints'], enable_sampling=parameters['enable_sampling'])
 else:
-    cgan.train_from(os.path.expanduser(parameters['checkpoint']))
+    cgan.train_from(os.path.expanduser(parameters['checkpoint']), save_checkpoints=parameters['save_checkpoints'], enable_sampling=parameters['enable_sampling'])
