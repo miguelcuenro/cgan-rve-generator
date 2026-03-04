@@ -1,6 +1,7 @@
 data/*
 test
 src/models/training_logs/*
+src/models/parameters.yaml
 src/models/rve
 src/models/__pycache__
 src/models/.*
