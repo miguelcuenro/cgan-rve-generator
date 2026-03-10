@@ -1,13 +1,14 @@
 name: env-cgan
 channels:
-  - conda-forge
+  - defaults
 dependencies:
   - jupyter
-  - python
-  - pyvista
   - matplotlib
   - numpy
+  - python
   - pytorch
+  - conda-forge::pyvista
   - tqdm
-  - tensorboard
-prefix: /rwthfs/rz/cluster/home/vi113507/miniforge3/envs/env-cgan
+  - conda-forge::tensorboard
+  - natsort
+prefix: /opt/anaconda3/envs/env-cgan
