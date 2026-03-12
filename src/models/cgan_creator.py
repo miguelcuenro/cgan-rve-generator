@@ -76,8 +76,18 @@ def load_data(npy_files):
     data_np = np.concatenate(data_list, axis=0)
     labels_np = np.repeat(label_list, repeats=[data_np.shape[0] // len(label_list)], axis=0)
 
+    # Normalizing labels
+    labels_max = np.max(labels_np, axis=0)
+    labels_min = np.min(labels_np, axis=0)
+
+    # Avoid division by zero
+    range_vals = labels_max - labels_min
+    range_vals[range_vals == 0] = 1.0  # If min=max, don't divide by zero
+    
+    labels_normalized = (labels_np - labels_min) / range_vals
+
     data_tensor = torch.from_numpy(data_np).double()
-    labels_tensor = torch.from_numpy(labels_np).double()
+    labels_tensor = torch.from_numpy(labels_normalized).double()
 
     return CustomDataset(data_tensor, labels_tensor)
 

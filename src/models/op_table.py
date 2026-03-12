@@ -75,6 +75,11 @@ def load_data(npy_files):
     data_np = np.concatenate(data_list, axis=0)
     labels_np = np.repeat(label_list, repeats=[data_np.shape[0] // len(label_list)], axis=0)
 
+    # Obtain max and min labels for abnormalization
+    global labels_min, labels_max
+    labels_max = np.max(labels_np, axis=0)
+    labels_min = np.min(labels_np, axis=0)
+
     data_tensor = torch.from_numpy(data_np).double()
     labels_tensor = torch.from_numpy(labels_np).double()
 
@@ -174,7 +179,11 @@ for i in range(number_of_samples):
 
     label_list.append(label_values[0].item())
 
+# Abnormalize the labels
+labels_norm = np.array(label_list)
+labels_np = labels_norm * (labels_max - labels_min) + labels_min
+
 # Store the labels
 filename = "labels"
 save_path = os.path.join(root, filename)
-np.save(save_path, np.array(label_list))
+np.save(save_path, labels_np)

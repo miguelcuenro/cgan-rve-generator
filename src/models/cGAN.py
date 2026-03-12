@@ -69,11 +69,6 @@ class DCWCGANGP:
         self.D_losses = []
         self.step_counter = 0
 
-        # TODO remove this as its not needed :0
-        # Establish convention for real and fake labels during training
-        # self.real_label = 1.
-        # self.fake_label = 0.
-
         # Setup Adam optimizers for both G and D
         self.optimizerD = optim.Adam(self.critic.parameters(), lr=learning_rate_disc, betas=(beta1, beta2))
         self.optimizerG = optim.Adam(self.gen.parameters(), lr=learning_rate_gen, betas=(beta1, beta2))
