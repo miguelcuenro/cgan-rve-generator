@@ -37,7 +37,10 @@ cnt = 0
 
 files = (file for file in os.listdir(dataroot) if os.path.isfile(os.path.join(dataroot, file)))
 sorted_files = natsorted(files)
-print(sorted_files)
+
+print("-"*45)
+print("Rendering RVEs")
+print("-"*45)
     
 for file in sorted_files:
     if file != "labels.npy":
@@ -51,7 +54,7 @@ for file in sorted_files:
         plt.axis('off')
 
         # Add title
-        title = f"Phase ratio $l = {round(labels[cnt], 3)}$"
+        title = f"Phase ratio $l = {round(labels[cnt]*1e-2, 3)}$"
         plt.title(title)
 
         # Save img
@@ -60,3 +63,7 @@ for file in sorted_files:
 
         # Increase counter
         cnt += 1
+
+print("-"*45)
+print("Render complete!")
+print("-"*45)

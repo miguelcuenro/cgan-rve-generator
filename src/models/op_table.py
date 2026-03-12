@@ -181,7 +181,7 @@ for i in range(number_of_samples):
 
 # Abnormalize the labels
 labels_norm = np.array(label_list)
-labels_np = labels_norm * (labels_max - labels_min) + labels_min
+labels_np = labels_norm * (labels_max[0] - labels_min[0]) + labels_min[0]
 
 # Store the labels
 filename = "labels"
