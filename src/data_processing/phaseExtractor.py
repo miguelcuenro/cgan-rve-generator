@@ -94,7 +94,7 @@ def process_simulation_dir(simulations_dir: str, output_dir: str, counter: int) 
 
     # Check  if the phase array can be reshaped to 32x32x32
     if phase_array.size != 32 * 32 * 32:
-        print(f"Skipping {simulations_dir} as the grid size is not 64x64x64.")
+        print(f"Skipping {simulations_dir} as the grid size is not 32x32x32.")
         number_of_skipped_size += 1
         return counter
 

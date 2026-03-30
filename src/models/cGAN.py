@@ -173,21 +173,28 @@ class DCWCGANGP:
                 data = batch_data.to(self.device)
                 labels = batch_labels.to(self.device) # ensure compatible tensor operations during training or inference
 
-                # Create random labeled input
-                binary_noise = torch.randint(0, 2, (data.size(0), self.num_channels, self.num_of_z, self.num_of_z, self.num_of_z), device=self.device).double()
+                # Create random labeled input (NOT ANYMORE)
+                #binary_noise = torch.randint(0, 2, (data.size(0), self.num_channels, self.num_of_z, self.num_of_z, self.num_of_z), device=self.device).double()
+                noise = torch.rand(data.size(0), self.num_channels, self.num_of_z, self.num_of_z, self.num_of_z, device=self.device).double()
+                z_one_tensor = torch.ones(data.size(0), 1, self.num_of_z, self.num_of_z, self.num_of_z)
+                # label_values = torch.rand((data.size(0), 1)) # Maybe we will have to restrain the range to [sample_min, sample_max] (let's see)
 
-                label_values = torch.rand((data.size(0), 1)) # Maybe we will have to restrain the range to [sample_min, sample_max] (let's see)
-                one_tensor = torch.ones(data.size(0), 1, self.num_of_z, self.num_of_z, self.num_of_z)
+                # label_values_expanded = label_values.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
+                # label_tensor = one_tensor * label_values_expanded
 
-                label_values_expanded = label_values.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
-                label_tensor = one_tensor * label_values_expanded
+                # Prepare real labels (same as later)
+                labels_expanded = labels[:, 0].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).unsqueeze(-1) # Maybe it is better to normalize them from 0 to 1 (let's see)
+                label_tensor = z_one_tensor * labels_expanded
 
-                z = torch.cat([binary_noise, label_tensor], dim=1)
+                # Concatenate input noise with real labels
+                z = torch.cat([noise, label_tensor], dim=1)
 
                 fake_imgs = self.gen.forward(z)
                 
+                # Prepare fake samples for the critic
                 img_one_tensor = torch.ones(data.size(0), 1, self.img_size, self.img_size, self.img_size)
-                img_label_tensor = img_one_tensor * label_values_expanded
+                img_label_tensor = img_one_tensor * labels_expanded
+                
                 critic_input_fake = torch.cat([fake_imgs, img_label_tensor], dim=1)
 
                 if epoch == 51:
@@ -218,9 +225,9 @@ class DCWCGANGP:
                     self.d_loop = 5
 
                 # Concatenate CRITIC input
-                labels_expanded = labels[:, 0].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).unsqueeze(-1) / 100 # Maybe it is better to normalize them from 0 to 1 (let's see)
-                input_labels = img_one_tensor * labels_expanded
-                input_data = torch.cat([data, input_labels], dim=1)
+                # labels_expanded = labels[:, 0].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).unsqueeze(-1) # Maybe it is better to normalize them from 0 to 1 (let's see)
+                # input_labels = img_one_tensor * labels_expanded
+                input_data = torch.cat([data, img_label_tensor], dim=1)
                 
                 # Training the DISCRIMINATOR
                 for j in range(self.d_loop):

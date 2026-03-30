@@ -54,7 +54,7 @@ for file in sorted_files:
         plt.axis('off')
 
         # Add title
-        title = f"Phase ratio $l = {round(labels[cnt]*1e-2, 3)}$"
+        title = f"Ferrite phase ratio $l = {round(labels[cnt]*1e-2, 3)}$"
         plt.title(title)
 
         # Save img
