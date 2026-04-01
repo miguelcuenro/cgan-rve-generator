@@ -40,11 +40,6 @@ for file in sorted_files:
 
 pr_np = np.array(pr_list)
 
-print("Labels")
-print(labels)
-print("np.mean()")
-print(pr_np)
-
 # Compute metrics
 
 error = pr_np - labels
