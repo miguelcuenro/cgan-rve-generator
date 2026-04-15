@@ -163,15 +163,13 @@ for i in range(number_of_samples):
     binary_noise = torch.randn(1, operated_cgan.num_channels, operated_cgan.num_of_z, operated_cgan.num_of_z,
                         operated_cgan.num_of_z, device=operated_cgan.device).double()
     
-    label_values = torch.rand((1, 1))
-    one_tensor = torch.ones(1, 1, operated_cgan.num_of_z, operated_cgan.num_of_z, operated_cgan.num_of_z)
+    label_values = torch.rand((1, 1)).double()
+    # one_tensor = torch.ones(1, 1, operated_cgan.num_of_z, operated_cgan.num_of_z, operated_cgan.num_of_z)
 
-    label_values_expanded = label_values.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
-    label_tensor = one_tensor * label_values_expanded
+    # label_values_expanded = label_values.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
+    # label_tensor = one_tensor * label_values_expanded
 
-    z = torch.cat([binary_noise, label_tensor], dim=1)
-
-    generated_img_raw = operated_cgan.gen(z)
+    generated_img_raw = operated_cgan.gen(binary_noise, label_values)
     generated_img_clean = torch.round(generated_img_raw)
     filename = f"number_{i}"
     save_path = os.path.join(root, filename)

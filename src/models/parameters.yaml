@@ -7,13 +7,13 @@ gen_num_feature_maps: 16  # Number of feature maps in the generator
 gen_dropout_rate: 0
 dis_num_feature_maps: 8  # Number of feature maps in the discriminator
 dis_dropout_rate: 0
-num_epochs: 11 # Number of training epochs
+num_epochs: 201 # Number of training epochs
 
 # learning rate for the optimizers
 learning_rate_disc: 0.0002
 learning_rate_gen: 0.00008
 
-d_loop: 10 # factor which decides how many times the critic is trained for each gen training step
+d_loop: 1 # factor which decides how many times the critic is trained for each gen training step
 
 # beta hyperparameters for the Adam optimizer
 beta1: 0.65
@@ -26,7 +26,7 @@ sigma: (10 ** 3)  # maybe dynamic?
 from_checkpoint: 0
 save_checkpoints: 1
 enable_sampling: 0
-checkpoint: 'training_logs/2026-03-30_11-47-44/checkpoint_dir/checkpoint_epoch_11.pth'
+checkpoint: 'training_logs/2026-04-11_19-31-27/checkpoint_dir/checkpoint_epoch_201.pth'
 
 number_of_samples: 16
 root: 'rve/'
