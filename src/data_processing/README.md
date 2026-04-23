@@ -8,3 +8,9 @@ There are only two variables in the parameter file (`parameters.yml`) that set u
 
 * `source`: Where your data folders are stored.
 * `destination`: Where your new, processed, data samples should be stored.
+
+## Functions
+
+This section is mostly for **ME**, because I am very forgetful. I will explain what every (important) function in the code does so I can remember it quickly, specially when it comes to "kill them Bugs"!
+
+### `process_simulation_dir`
