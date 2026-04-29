@@ -1,4 +1,4 @@
-# Data Pprocessing
+# Data Processing
 
 `phaseExtractor.py` is a code designed to parse (I think that's how it is called) through  folders and look for `materials.yaml` and `Specs.txt` files and preprocess them to generate samples so the cGAN can safely digest it. The data samples are then augmented so the cGAN has more than enough data samples.
 
