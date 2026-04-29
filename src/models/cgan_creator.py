@@ -6,9 +6,6 @@ from torch.utils.data import Dataset, DataLoader
 import cGAN
 import pyvista as pv
 
-torch.cuda.empty_cache()  # Wegen Grafikspeicher auf dem Cluster
-pv.start_xvfb()  # für Screenshot auf dem Cluster
-
 # --------------- #
 # SETUP WORKFRAME #
 # --------------- #
@@ -39,7 +36,7 @@ def find_npy_files(root_dir):
     return npy_files
 
 
-def load_data(npy_files):
+def load_data(npy_files, img_size, num_channels):
     data_list = []
     label_list = []
     label_shapes = set()  # Track unique label shapes
@@ -91,54 +88,65 @@ def load_data(npy_files):
 
     return CustomDataset(data_tensor, labels_tensor)
 
-# ---------------- #
-# HYPER PARAMETERS #
-# ---------------- #
+# ------------- #
+# MAIN FUNCTION #
+# ------------- #
 
-# Load the parameters file
-with open('parameters.yaml', 'r') as dictionary:
-    parameters = yaml.safe_load(dictionary)
+def main():
+    torch.cuda.empty_cache()  # Wegen Grafikspeicher auf dem Cluster
+    pv.start_xvfb()  # für Screenshot auf dem Cluster
 
-# Path to root directory
-dataroot = os.path.expanduser(parameters['dataroot'])
-num_of_workers = parameters['num_of_workers']
-batch_size = parameters['batch_size']
-img_size = parameters['img_size']
-num_channels = parameters['num_channels']
-gen_num_feature_maps = parameters['gen_num_feature_maps']
-gen_dropout_rate = parameters['gen_dropout_rate']
-dis_num_feature_maps = parameters['dis_num_feature_maps'] # was 16
-dis_dropout_rate = parameters['dis_dropout_rate']
-num_epochs = parameters['num_epochs']
-learning_rate_disc = parameters['learning_rate_disc']
-learning_rate_gen = parameters['learning_rate_gen']
-d_loop = parameters['d_loop']
-beta1 = parameters['beta1']
-beta2 = parameters['beta2']
-ngpu = parameters['ngpu']
-lambda_penal = parameters['lambda_penal']
-sigma = parameters['sigma']
+    # ---------------- #
+    # HYPER PARAMETERS #
+    # ---------------- #
 
-# ------------ #
-# PREPARE DATA #
-# ------------ #
+    # Load the parameters file
+    with open('parameters.yaml', 'r') as dictionary:
+        parameters = yaml.safe_load(dictionary)
 
-npy_files = find_npy_files(dataroot)
-dataset = load_data(npy_files)
+    # Path to root directory
+    dataroot = os.path.expanduser(parameters['dataroot'])
+    num_of_workers = parameters['num_of_workers']
+    batch_size = parameters['batch_size']
+    img_size = parameters['img_size']
+    num_channels = parameters['num_channels']
+    gen_num_feature_maps = parameters['gen_num_feature_maps']
+    gen_dropout_rate = parameters['gen_dropout_rate']
+    dis_num_feature_maps = parameters['dis_num_feature_maps'] # was 16
+    dis_dropout_rate = parameters['dis_dropout_rate']
+    num_epochs = parameters['num_epochs']
+    learning_rate_disc = parameters['learning_rate_disc']
+    learning_rate_gen = parameters['learning_rate_gen']
+    d_loop = parameters['d_loop']
+    beta1 = parameters['beta1']
+    beta2 = parameters['beta2']
+    ngpu = parameters['ngpu']
+    lambda_penal = parameters['lambda_penal']
+    sigma = parameters['sigma']
 
-# ----------------------- #
-# CREATE GAN AND TRAIN IT #
-# ----------------------- #
-cgan = cGAN.DCWCGANGP(directory=dataroot,
-                            dataset=dataset,
-                            batch_size=batch_size, num_epochs=num_epochs, beta1=beta1, beta2=beta2, ngpu=ngpu,
-                            learning_rate_disc=learning_rate_disc, learning_rate_gen=learning_rate_gen,
-                            d_loop=d_loop, lambda_penal=lambda_penal, sigma=sigma,
-                            img_size=img_size, num_channels=num_channels,
-                            gen_num_feature_maps=gen_num_feature_maps, gen_dropout_rate=gen_dropout_rate,
-                            dis_num_feature_maps=dis_num_feature_maps, dis_dropout_rate=dis_dropout_rate)
+    # ------------ #
+    # PREPARE DATA #
+    # ------------ #
 
-if parameters['from_checkpoint'] == False:
-    cgan.train(save_checkpoints=parameters['save_checkpoints'], enable_sampling=parameters['enable_sampling'])
-else:
-    cgan.train_from(os.path.expanduser(parameters['checkpoint']), save_checkpoints=parameters['save_checkpoints'], enable_sampling=parameters['enable_sampling'])
+    npy_files = find_npy_files(dataroot)
+    dataset = load_data(npy_files, img_size, num_channels)
+
+    # ----------------------- #
+    # CREATE GAN AND TRAIN IT #
+    # ----------------------- #
+    cgan = cGAN.DCWCGANGP(directory=dataroot,
+                                dataset=dataset,
+                                batch_size=batch_size, num_epochs=num_epochs, beta1=beta1, beta2=beta2, ngpu=ngpu,
+                                learning_rate_disc=learning_rate_disc, learning_rate_gen=learning_rate_gen,
+                                d_loop=d_loop, lambda_penal=lambda_penal, sigma=sigma,
+                                img_size=img_size, num_channels=num_channels,
+                                gen_num_feature_maps=gen_num_feature_maps, gen_dropout_rate=gen_dropout_rate,
+                                dis_num_feature_maps=dis_num_feature_maps, dis_dropout_rate=dis_dropout_rate)
+
+    if parameters['from_checkpoint'] == False:
+        cgan.train(save_checkpoints=parameters['save_checkpoints'], enable_sampling=parameters['enable_sampling'])
+    else:
+        cgan.train_from(os.path.expanduser(parameters['checkpoint']), save_checkpoints=parameters['save_checkpoints'], enable_sampling=parameters['enable_sampling'])
+
+if __name__ == "__main__":
+    main()
