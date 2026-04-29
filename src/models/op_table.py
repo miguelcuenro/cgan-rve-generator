@@ -6,11 +6,13 @@ from torch.utils.data import Dataset, DataLoader
 import yaml
 import datetime
 
-torch.cuda.empty_cache()
-
 # --------------- #
 # SETUP WORKFRAME #
 # --------------- #
+
+# Initialize variables
+img_size = None
+num_channels = None
 
 # Define custom class
 class CustomDataset(Dataset):
@@ -90,98 +92,111 @@ def log_memory_usage(step):
     reserved_memory = torch.cuda.memory_reserved()
     print(f"Step {step}: Allocated memory: {allocated_memory} bytes, Reserved memory: {reserved_memory} bytes")
 
-# ---------------- #
-# HYPER PARAMETERS #
-# ---------------- #
+# ------------- #
+# MAIN FUNCTION #
+# ------------- #
 
-# Load the parameters file
-with open('parameters.yaml', 'r') as dictionary:
-    parameters = yaml.safe_load(dictionary)
+def main():
+    torch.cuda.empty_cache()
 
-# Path to root directory
-dataroot = os.path.expanduser(parameters['dataroot'])
-num_of_workers = parameters['num_of_workers']
-batch_size = parameters['batch_size']
-img_size = parameters['img_size']
-num_channels = parameters['num_channels']
-gen_num_feature_maps = parameters['gen_num_feature_maps']
-gen_dropout_rate = parameters['gen_dropout_rate']
-dis_num_feature_maps = parameters['dis_num_feature_maps'] # was 16
-dis_dropout_rate = parameters['dis_dropout_rate']
-num_epochs = parameters['num_epochs']
-learning_rate_disc = parameters['learning_rate_disc']
-learning_rate_gen = parameters['learning_rate_gen']
-d_loop = parameters['d_loop']
-beta1 = parameters['beta1']
-beta2 = parameters['beta2']
-ngpu = parameters['ngpu']
-lambda_penal = parameters['lambda_penal']
-sigma = parameters['sigma']
+    # ---------------- #
+    # HYPER PARAMETERS #
+    # ---------------- #
 
-# ------------ #
-# PREPARE DATA #
-# ------------ #
+    # Make some variables global
+    global img_size, num_channels
 
-npy_files = find_npy_files(dataroot)
-dataset = load_data(npy_files)
+    # Load the parameters file
+    with open('parameters.yaml', 'r') as dictionary:
+        parameters = yaml.safe_load(dictionary)
 
-checkpoint = parameters['checkpoint']
+    # Path to root directory
+    dataroot = os.path.expanduser(parameters['dataroot'])
+    num_of_workers = parameters['num_of_workers']
+    batch_size = parameters['batch_size']
+    img_size = parameters['img_size']
+    num_channels = parameters['num_channels']
+    gen_num_feature_maps = parameters['gen_num_feature_maps']
+    gen_dropout_rate = parameters['gen_dropout_rate']
+    dis_num_feature_maps = parameters['dis_num_feature_maps'] # was 16
+    dis_dropout_rate = parameters['dis_dropout_rate']
+    num_epochs = parameters['num_epochs']
+    learning_rate_disc = parameters['learning_rate_disc']
+    learning_rate_gen = parameters['learning_rate_gen']
+    d_loop = parameters['d_loop']
+    beta1 = parameters['beta1']
+    beta2 = parameters['beta2']
+    ngpu = parameters['ngpu']
+    lambda_penal = parameters['lambda_penal']
+    sigma = parameters['sigma']
 
-operated_cgan = cGAN.DCWCGANGP(directory=dataroot,
-                                    dataset=dataset,
-                                    batch_size=batch_size, num_epochs=num_epochs, beta1=beta1, beta2=beta2, ngpu=ngpu,
-                                    learning_rate_disc=learning_rate_disc, learning_rate_gen=learning_rate_gen,
-                                    d_loop=d_loop, lambda_penal=lambda_penal, sigma=sigma,
-                                    img_size=img_size, num_channels=num_channels,
-                                    gen_num_feature_maps=gen_num_feature_maps, gen_dropout_rate=gen_dropout_rate,
-                                    dis_num_feature_maps=dis_num_feature_maps, dis_dropout_rate=dis_dropout_rate)
+    # ------------ #
+    # PREPARE DATA #
+    # ------------ #
 
-print(len(dataset))
-print(operated_cgan.device)
-#print(operated_cgan.description)
+    npy_files = find_npy_files(dataroot)
+    dataset = load_data(npy_files)
 
-torch.cuda.empty_cache()
+    checkpoint = parameters['checkpoint']
 
-# Load the checkpoint
-operated_cgan.load_checkpoint(checkpoint_path=checkpoint)
-print("Loaded the checkpoint!")
+    operated_cgan = cGAN.DCWCGANGP(directory=dataroot,
+                                        dataset=dataset,
+                                        batch_size=batch_size, num_epochs=num_epochs, beta1=beta1, beta2=beta2, ngpu=ngpu,
+                                        learning_rate_disc=learning_rate_disc, learning_rate_gen=learning_rate_gen,
+                                        d_loop=d_loop, lambda_penal=lambda_penal, sigma=sigma,
+                                        img_size=img_size, num_channels=num_channels,
+                                        gen_num_feature_maps=gen_num_feature_maps, gen_dropout_rate=gen_dropout_rate,
+                                        dis_num_feature_maps=dis_num_feature_maps, dis_dropout_rate=dis_dropout_rate)
 
-# Perform analysis with memory management
-torch.cuda.empty_cache()
+    print(len(dataset))
+    print(operated_cgan.device)
+    #print(operated_cgan.description)
 
-# Setup the sampling directory
-root = os.path.join(parameters['root'], datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
-os.makedirs(root, exist_ok=True)
+    torch.cuda.empty_cache()
 
-# Z IS WROOOOONG!!! CHANGE IT MIGUELON
-number_of_samples = parameters['number_of_samples']
+    # Load the checkpoint
+    operated_cgan.load_checkpoint(checkpoint_path=checkpoint)
+    print("Loaded the checkpoint!")
 
-# Store list of assigned labels
-label_list = []
+    # Perform analysis with memory management
+    torch.cuda.empty_cache()
 
-for i in range(number_of_samples):
-    binary_noise = torch.randn(1, operated_cgan.num_channels, operated_cgan.num_of_z, operated_cgan.num_of_z,
-                        operated_cgan.num_of_z, device=operated_cgan.device).double()
-    
-    label_values = torch.rand((1, 1)).double()
-    # one_tensor = torch.ones(1, 1, operated_cgan.num_of_z, operated_cgan.num_of_z, operated_cgan.num_of_z)
+    # Setup the sampling directory
+    root = os.path.join(parameters['root'], datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
+    os.makedirs(root, exist_ok=True)
 
-    # label_values_expanded = label_values.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
-    # label_tensor = one_tensor * label_values_expanded
+    # Z IS WROOOOONG!!! CHANGE IT MIGUELON
+    number_of_samples = parameters['number_of_samples']
 
-    generated_img_raw = operated_cgan.gen(binary_noise, label_values)
-    generated_img_clean = torch.round(generated_img_raw)
-    filename = f"number_{i}"
+    # Store list of assigned labels
+    label_list = []
+
+    for i in range(number_of_samples):
+        binary_noise = torch.randn(1, operated_cgan.num_channels, operated_cgan.num_of_z, operated_cgan.num_of_z,
+                            operated_cgan.num_of_z, device=operated_cgan.device).double()
+        
+        label_values = torch.rand((1, 1)).double()
+        # one_tensor = torch.ones(1, 1, operated_cgan.num_of_z, operated_cgan.num_of_z, operated_cgan.num_of_z)
+
+        # label_values_expanded = label_values.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
+        # label_tensor = one_tensor * label_values_expanded
+
+        generated_img_raw = operated_cgan.gen(binary_noise, label_values)
+        generated_img_clean = torch.round(generated_img_raw)
+        filename = f"number_{i}"
+        save_path = os.path.join(root, filename)
+        np.save(save_path, generated_img_clean[0].detach().numpy())
+
+        label_list.append(label_values[0].item())
+
+    # Abnormalize the labels
+    labels_norm = np.array(label_list)
+    labels_np = labels_norm * (labels_max[0] - labels_min[0]) + labels_min[0]
+
+    # Store the labels
+    filename = "labels"
     save_path = os.path.join(root, filename)
-    np.save(save_path, generated_img_clean[0].detach().numpy())
+    np.save(save_path, labels_np)
 
-    label_list.append(label_values[0].item())
-
-# Abnormalize the labels
-labels_norm = np.array(label_list)
-labels_np = labels_norm * (labels_max[0] - labels_min[0]) + labels_min[0]
-
-# Store the labels
-filename = "labels"
-save_path = os.path.join(root, filename)
-np.save(save_path, labels_np)
+if __name__ == "__main__":
+    main()

@@ -69,13 +69,17 @@ def visualize_tensor(tensor, colormap='gist_earth', show_on_screen=True):
     #plotter.show(full_screen=False)
     return plotter
 
-# Load the parameters file
-with open('parameters.yaml', 'r') as dictionary:
-    parameters = yaml.safe_load(dictionary)
+def main():
+    # Load the parameters file
+    with open('parameters.yaml', 'r') as dictionary:
+        parameters = yaml.safe_load(dictionary)
 
-sampling_dir = parameters['sampling_dir']
+    sampling_dir = parameters['sampling_dir']
 
-for filename in os.listdir(sampling_dir):
-    npy_file = np.load(os.path.join(sampling_dir, filename))
-    tensor = torch.from_numpy(npy_file)
-    visualize_tensor(tensor).save_graphic(sampling_dir + f'/rve_plot_{filename.split('_')[1].split('.')[0]}.pdf')
+    for filename in os.listdir(sampling_dir):
+        npy_file = np.load(os.path.join(sampling_dir, filename))
+        tensor = torch.from_numpy(npy_file)
+        visualize_tensor(tensor).save_graphic(sampling_dir + f'/rve_plot_{filename.split('_')[1].split('.')[0]}.pdf')
+
+if __name__ == "__main__":
+    main()
