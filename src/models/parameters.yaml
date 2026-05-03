@@ -7,7 +7,7 @@ gen_num_feature_maps: 16  # Number of feature maps in the generator
 gen_dropout_rate: 0
 dis_num_feature_maps: 8  # Number of feature maps in the discriminator
 dis_dropout_rate: 0
-num_epochs: 201 # Number of training epochs
+num_epochs: 5 # Number of training epochs
 
 # learning rate for the optimizers
 learning_rate_disc: 0.0002
@@ -23,10 +23,10 @@ ngpu: 1 # number of available gpus, 0 for cpu mode
 lambda_penal: 10 # lambda multiplier for the gradient penalty
 sigma: (10 ** 3)  # maybe dynamic?
 
-from_checkpoint: 0
+from_checkpoint: 1
 save_checkpoints: 1
-enable_sampling: 0
-checkpoint: 'training_logs/2026-04-11_19-31-27/checkpoint_dir/checkpoint_epoch_201.pth'
+enable_sampling: 1
+checkpoint: 'training_logs/2026-05-02_19-36-53/checkpoint_dir/checkpoint_epoch_5.pth'
 
 number_of_samples: 16
 root: 'rve/'

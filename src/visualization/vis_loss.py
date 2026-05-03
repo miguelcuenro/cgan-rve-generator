@@ -14,6 +14,19 @@ from tensorboard.backend.event_processing.event_accumulator import EventAccumula
 # FUNCTION DEFINITIONS
 # -------------------- #
 
+def find_event_file(event_dir):
+    """Return the first TensorBoard event file found in log_dir."""
+    try:
+        files = os.listdir(event_dir)
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Directory not found: {event_dir}")
+    
+    event_files = [f for f in files if f.startswith("events.out.tfevents")]
+    if not event_files:
+        raise FileNotFoundError(f"No event file in {event_dir}")
+    
+    return os.path.join(event_dir, event_files[0])
+
 def read_tensorboard_logs(log_path, tag):
     # Initialize the event accumulator
     event_acc = EventAccumulator(log_path)
@@ -86,7 +99,7 @@ def main():
     print('Expect a consistent, positive gap; the Real samples should remain above the Fake samples, and as training progresses, you want the Fake line to trend upward toward the Real line until the distance stabilizes at a low value.')
 
     # Usage
-    log_dir = event_dir + "/events.out.tfevents.1775907087.MacBook-Pro-de-Miguel.local.8267.0" 
+    log_dir = find_event_file(event_dir=event_dir)
 
     print_available_tags(log_dir)
 
@@ -159,12 +172,14 @@ def main():
     axs_flat[3].legend()
     axs_flat[3].set_title('Subplot 4: Real Sample Loss vs Fake Sample Loss')
 
+    # Adjust the spacing between subplots 
     plt.tight_layout()
-    plt.show()
 
     # Save img
     path = os.path.join(image_dir, 'loss_curves.png')
     plt.savefig(path, format="PNG")
+
+    plt.show()
 
 if __name__ == "__main__":
     main()

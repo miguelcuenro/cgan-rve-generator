@@ -142,6 +142,9 @@ class DCWCGANGP:
         training_log_dir = os.path.join(os.path.expanduser("training_logs"), timestamp)
         sample_dir = os.path.join(training_log_dir, "sample_dir")
 
+        if save_checkpoints == True or enable_sampling == True:
+            writer = SummaryWriter(log_dir=training_log_dir)
+
         if save_checkpoints == True:
             # Create unique directories for sampling and logging
             #os.makedirs(training_log_dir, exist_ok=True)
@@ -151,7 +154,6 @@ class DCWCGANGP:
             os.makedirs(checkpoint_dir, exist_ok=True)
             #os.makedirs(sample_dir, exist_ok=True)
 
-            writer = SummaryWriter(log_dir=training_log_dir)
             writer.add_text('Training Info', f'Start Time: {train_start.strftime('%Y-%m-%d %H:%M:%S')}', 0)
             writer.add_text('Hyperparameters', self.hparams, global_step=0)
             #writer.add_text('Special Comments', self.description, global_step=0)
@@ -159,7 +161,7 @@ class DCWCGANGP:
         if enable_sampling == True:
             os.makedirs(sample_dir, exist_ok=True)
 
-        sampling_freq = 150 # Again: Do we use this?
+        sampling_freq = 150 # Again: Do we use this? Yes we do for SAMPLING #CHANGE IT TO 150
         sampling_counter = -1
         
         start_epoch = getattr(self, 'start_epoch', 0)  # default to 0 if not set
@@ -278,7 +280,7 @@ class DCWCGANGP:
                 total_g_loss.backward()
                 self.optimizerG.step()
 
-            if ((epoch == self.num_epochs - 1) or ((epoch % 100 == 0) and (epoch != 0)) or (self.step_counter % 1000 == 0)) and save_checkpoints == True: # change epoch % 2 == 0 back to 100
+            if ((epoch == self.num_epochs - 1) or ((epoch % 1 == 0) or (self.step_counter % 1000 == 0)) and save_checkpoints == True): # and (epoch != 0)) or (self.step_counter % 1000 == 0)) and save_checkpoints == True: # change epoch % 2 == 0 back to 100
                 checkpoint_path = os.path.join(checkpoint_dir, f'checkpoint_epoch_{epoch+1}.pth')
                 checkpoint = {
                     'epoch': epoch + 1,
@@ -302,6 +304,7 @@ class DCWCGANGP:
             writer.add_text("Training Info", f"Duration: {duration_str}", 0)
             writer.add_scalar("Training Duration", duration.seconds, 0)
 
+        if save_checkpoints == True or enable_sampling == True:
             writer.close()
 
         print('\n' + '# -------------- #' + '\n' + 'Training complete!' + '\n' + '# -------------- #')

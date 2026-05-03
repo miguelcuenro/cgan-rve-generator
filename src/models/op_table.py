@@ -148,8 +148,8 @@ def main():
                                         gen_num_feature_maps=gen_num_feature_maps, gen_dropout_rate=gen_dropout_rate,
                                         dis_num_feature_maps=dis_num_feature_maps, dis_dropout_rate=dis_dropout_rate)
 
-    print(len(dataset))
-    print(operated_cgan.device)
+    print("Dataset length: ", len(dataset))
+    print("Device: ", operated_cgan.device)
     #print(operated_cgan.description)
 
     torch.cuda.empty_cache()
@@ -197,6 +197,8 @@ def main():
     filename = "labels"
     save_path = os.path.join(root, filename)
     np.save(save_path, labels_np)
+
+    print("Samples generated!")
 
 if __name__ == "__main__":
     main()
