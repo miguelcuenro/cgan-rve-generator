@@ -53,7 +53,7 @@ In the following, I will explain what every function does and write down comment
 
 2. **Raises clear errors** – `FileNotFoundError` if the directory does not exist or no event file is found.
 
-####` read_tensorboard_logs(log_path, tag)`
+#### `read_tensorboard_logs(log_path, tag)`
 
 1. **Loads a specific scalar tag** – Uses `EventAccumulator` to reload the event file, then extracts step and value lists for the given tag.
 
