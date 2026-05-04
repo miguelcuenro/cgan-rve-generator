@@ -1,12 +1,12 @@
-# Visualization Utils
-
-Greetings! In this directory there is only one script, that being `visualization_utils.py`. This code was not written by me, but by my predecesor (KUDOS to Xavi!!). However, I will still try my best to explain what it is about.
+# Utils
 
 ## `visualization_utils.py`
 
-`visualization_utils.py` provides two functions for visualizing 3D volumetric data (e.g., RVEs, generated microstructures) using PyVista. Exactly how it works, will we see in the following:
+`visualization_utils.py` provides two functions for visualizing 3D volumetric data (e.g., RVEs, generated microstructures) using PyVista. This code was not written by me, but by my predecessor (KUDOS to Xavi!!).
 
-#### visualize_and_log_to_tensorboard(tag, tensor, step, writer, colormap='gist_earth')
+In the following, I will explain what every function does and write down comments worthy of remembering:
+
+#### `visualize_and_log_to_tensorboard(tag, tensor, step, writer, colormap='gist_earth')`
 
 1. **Input conversion** – Converts PyTorch tensors to NumPy arrays using `.cpu().numpy()`. If the input is already a NumPy array, it proceeds directly.
 
