@@ -83,10 +83,10 @@ In the following, I will explain what every function does and write down comment
 4. **Reads five scalar series** – `Loss/Critic`, `Loss/D_fake`, `Loss/D_real`, `Loss/Generator` and `GP`
 
 5. **Creates a 2×2 matplotlib grid** – Subplots:
-    0. Generator loss with centered moving average and a zero baseline.
-    1. Critic loss with moving average and zero line.
-    2. Gradient penalty (no smoothing) with zero line.
-    3. Real vs. fake sample losses; shades the area between them (the “distinction gap”) and adds a zero line.
+    1. Generator loss with centered moving average and a zero baseline.
+    2. Critic loss with moving average and zero line.
+    3. Gradient penalty (no smoothing) with zero line.
+    4. Real vs. fake sample losses; shades the area between them (the “distinction gap”) and adds a zero line.
 
 6. **Saves the figure** – Path: `{dataroot}/img/loss_curves.png` (directory created earlier by `visualize_rves.py` or automatically if missing).
 
