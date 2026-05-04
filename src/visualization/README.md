@@ -40,3 +40,54 @@ In the following, I will explain the key steps and note any important details:
 #### PyVista backend setup
 
 Sets `pv.global_theme.jupyter_backend = 'static'` to force PyVista to generate static PNG images, which is essential for headless environments or when taking screenshots in Jupyter notebooks.
+
+## `vis_loss.py`
+
+This script loads TensorBoard event logs from a directory specified in parameters.yaml, extracts scalar metrics such as generator loss, critic loss, gradient penalty, and real/fake sample losses, and generates a 2×2 summary plot with smoothed curves and interpretation guidelines. The resulting figure is saved as loss_curves.png inside the img/ subdirectory of the data root.
+
+In the following, I will explain what every function does and write down comments worthy of remembering:
+
+#### `find_event_file(event_dir)`
+
+1. **Searches for the TensorBoard event file** – Lists all files in `event_dir` and returns the first one whose name starts with `"events.out.tfevents"`.
+
+2. **Raises clear errors** – `FileNotFoundError` if the directory does not exist or no event file is found.
+
+####` read_tensorboard_logs(log_path, tag)`
+
+1. **Loads a specific scalar tag** – Uses `EventAccumulator` to reload the event file, then extracts step and value lists for the given tag.
+
+2. **Returns two parallel lists** – steps and values, ready for plotting.
+
+#### `print_available_tags(log_path)`
+
+1. **Introspects the event file** – Prints all available tags grouped by category (scalars, histograms, images, etc.).
+
+2. **Helpful for debugging** – Allows the user to verify which metrics were actually logged (e.g., `Loss/Critic`, `GP`, `Loss/D_fake`).
+
+
+#### `moving_avg(data, window_size=10)`
+
+1. **Computes a centered moving average** – Pads the data with edge values `(mode='edge')` to avoid shortening the series, then applies a box‑filter convolution.
+
+*Important – The returned array has the same length as the input, but the first and last `window_size-1` points are edge‑padded. The script later slices `[9:-9]` to remove the padded edges when plotting the smoothed line.*
+
+#### `main()`
+
+1. **Loads parameters** – Reads `parameters.yaml`, expects keys `event_dir` (path to TensorBoard logs) and dataroot (where `img/` will be created).
+
+2. **Prints interpretation guidelines** – Hard‑coded advice for interpreting generator loss (plateau expected), critic loss (stable negative values), gradient penalty (should stay near zero), and the real‑vs‑fake gap (positive, with fake trending upward).
+
+3. **Locates event file and shows available tags** – Calls `find_event_file` and `print_available_tags`.
+
+4. **Reads five scalar series** – `Loss/Critic`, `Loss/D_fake`, `Loss/D_real`, `Loss/Generator` and `GP`
+
+5. **Creates a 2×2 matplotlib grid** – Subplots:
+    0. Generator loss with centered moving average and a zero baseline.
+    1. Critic loss with moving average and zero line.
+    2. Gradient penalty (no smoothing) with zero line.
+    3. Real vs. fake sample losses; shades the area between them (the “distinction gap”) and adds a zero line.
+
+6. **Saves the figure** – Path: `{dataroot}/img/loss_curves.png` (directory created earlier by `visualize_rves.py` or automatically if missing).
+
+7. **Displays the plot** – `plt.show()`.
