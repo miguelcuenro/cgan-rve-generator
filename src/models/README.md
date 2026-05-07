@@ -42,7 +42,7 @@ In the following, I will explain what every function does and write down comment
 
 A minimal PyTorch Dataset wrapper to pair data samples with their labels.
 
-#### `find_npy_files`
+#### `find_npy_files()`
 
 1. **Walks the directory tree** – Recursively traverses `root_dir` using `os.walk()`.
 
@@ -54,7 +54,7 @@ A minimal PyTorch Dataset wrapper to pair data samples with their labels.
 
 5. **Returns the list** – Provides all discovered `phase_grid.npy` paths for further processing.
 
-#### `load_data`
+#### `load_data()`
 
 1. **Iterates through `.npy` files** – Loops over a list of phase grid file paths.
 
@@ -75,3 +75,123 @@ A minimal PyTorch Dataset wrapper to pair data samples with their labels.
 9. **Converts to PyTorch tensors** – Converts data and labels to torch.DoubleTensor.
 
 10. **Returns a CustomDataset** – Wraps the tensors in a CustomDataset for use with a PyTorch DataLoader.
+
+#### `main()`
+
+1. **Clears GPU cache** – Calls `torch.cuda.empty_cache()` to free GPU memory, useful for cluster environments to avoid out-of-memory issues.
+
+2. **Starts virtual frame buffer** – `pv.start_xvfb()` initializes a virtual display for rendering screenshots on headless servers.
+
+3. **Loads hyperparameters** – Reads `parameters.yaml` and assigns values to variables like `batch_size`, `num_epochs`, `learning rates`, etc.
+
+4. **Prepares the dataset** – Uses `find_npy_files(dataroot)` to locate all `phase_grid.npy` files, then `load_data()` to create the dataset with specified `img_size` and `num_channels`.
+
+5. **Instantiates the GAN model** – Creates the `DCWCGANGP` object (conditional Wasserstein GAN with gradient penalty) using all loaded parameters.
+
+6. **Starts or resumes training** – If `from_checkpoint` is `False`, calls `cgan.train()`; otherwise calls `cgan.train_from()` with the checkpoint path. Both methods respect `save_checkpoints` and `enable_sampling` flags.
+
+## `CGAN.py`
+
+This script contains the conditional Wasserstein GAN with Gradient Penalty (cWGAN-GP) we use to generate the RVEs. The, here-defined, classes get called by `cgan_creator.py`, so there is little to worry about this code.
+
+### `class DCWCGANGP`
+
+#### `__init__()`
+
+1. **Stores training hyperparameters** – batch size, epochs, learning rates, optimiser betas, gradient penalty weight, etc.
+
+2. **Sets up device** – uses CUDA if available and `ngpu ≥ 1`, otherwise CPU.
+
+3. **Instantiates Generator and Critic** – creates the two networks with the given feature maps and dropout rates, moves them to the device as `double()`, and applies `init_weights`.
+
+4. **Creates DataLoader** – wraps the dataset with the specified batch size and shuffling.
+
+5. **Initialises fixed test inputs** – `fixed_label` (random) and `fixed_z` (rounded random noise) for consistent sampling during training.
+
+6. **Prepares storage** – empty lists for loss tracking and a step counter.
+
+7. **Configures Adam optimizers** – one for the critic, one for the generator.
+
+8. **Saves hyperparameters as a string** – for logging to TensorBoard.
+
+#### `init_weights()`
+
+1. **Identifies layer type** – Checks the class name of the module.
+
+2. **Initializes convolutional layers** – If the class name contains `'Conv'`, applies normal initialization with mean `0.0` and standard deviation `0.02` to the weight data.
+
+3. **Initializes batch norm layers** – If the class name contains `'BatchNorm'`, initializes weights with normal distribution (mean `1.0`, std `0.02`) and sets bias to constant `0`.
+
+4. **Ignores other layers** – Leaves all other module types unchanged.
+
+#### `compute_gradients()`
+
+1. **Generates random interpolation weights** – Creates an alpha tensor of random values (same shape as real samples) on the device, used to mix real and fake samples.
+
+2. **Computes interpolated samples** – Linearly interpolates between real and fake samples: `interpolates = alpha * real + (1-alpha) * fake`. Sets `requires_grad=True` to track gradients.
+
+**3. Passes interpolates through critic** – Computes critic scores for the interpolated samples.
+
+4. **Prepares gradient output tensor** – Creates a fake tensor of ones with the same batch size as `real_samples` (shape: `[batch, 1,1,1,1]`) to serve as `grad_outputs`.
+
+5. **Calculates gradients** – Uses `torch.autograd.grad()` to compute gradients of critic outputs with respect to the interpolated inputs.
+
+6. **Computes gradient penalty** – Takes the norm of the gradients (L2 norm), subtracts 1, squares the result, and averages across the batch.
+
+7. **Returns penalty term** – Returns the computed gradient penalty (scalar tensor).
+
+#### `train()``
+
+1. **Prints start message and creates timestamp** – Records training start time and generates a unique timestamp for the log directory.
+
+2. **Creates log directories and TensorBoard writer** – If either `save_checkpoints` or `enable_sampling` is `True`, creates a `training_logs/timestamp` folder and initializes a `SummaryWriter`.
+
+3. **Sets up checkpoint and sample subdirectories** – If `save_checkpoints` is `True`, creates a `checkpoint_dir` and logs hyperparameters to TensorBoard. If `enable_sampling` is True, creates a `sample_dir`.
+
+4. **Initializes sampling frequency and counter** – `sampling_freq = 150` (changes to 500 after epoch 51), `sampling_counter = -1`.
+
+5. **Determines starting epoch** – Uses `self.start_epoch` if resuming from a checkpoint (default 0).
+
+6. **Enters epoch loop** – Iterates from `start_epoch` to `num_epochs`.
+
+7. **Iterates over batches** – For each batch:
+
+    * Unpacks data and labels, moves to device.
+
+    * Generates random noise and creates fake images via generator.
+
+    * At epoch 51, increases `sampling_freq` to 500.
+
+    * Conditionally saves samples (both random and fixed) every `sampling_freq` batches, logs them to TensorBoard.
+    
+    * After 5000 total steps, reduces `d_loop` to 5.
+
+8. **Trains the critic (discriminator) for `d_loop` iterations:**
+
+    * Computes real and fake critic outputs.
+
+    * Calculates loss d_loss = -(mean(real) - mean(fake)).
+
+    * Computes gradient penalty and adds it scaled by lambda_penal.
+
+    * Logs losses and penalty to TensorBoard if save_checkpoints.
+
+    * Backpropagates total critic loss and updates optimizer.
+
+9. **Trains the generator once:**
+
+    * Computes critic outputs on fake images.
+
+    * Generator loss g_loss = -mean(outputs).
+
+    * Logs generator loss to TensorBoard if save_checkpoints.
+
+    * Backpropagates and updates generator optimizer.
+
+10. **Saves checkpoint at epoch end** – Condition: last epoch, every hundred epochs `(epoch % 1 == 100)`, or every 1000 steps. Saves model states, optimizer states, and losses.
+
+11. **After all epochs** – If `save_checkpoints` is `True`, logs training end time and duration to TensorBoard.
+
+12. **Closes TensorBoard writer** – If either `save_checkpoints` or `enable_sampling` was `True`.
+
+13. **Prints completion message.**
