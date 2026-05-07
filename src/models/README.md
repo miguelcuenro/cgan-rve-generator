@@ -140,7 +140,7 @@ This script contains the conditional Wasserstein GAN with Gradient Penalty (cWGA
 
 7. **Returns penalty term** – Returns the computed gradient penalty (scalar tensor).
 
-#### `train()``
+#### `train()`
 
 1. **Prints start message and creates timestamp** – Records training start time and generates a unique timestamp for the log directory.
 
@@ -195,3 +195,130 @@ This script contains the conditional Wasserstein GAN with Gradient Penalty (cWGA
 12. **Closes TensorBoard writer** – If either `save_checkpoints` or `enable_sampling` was `True`.
 
 13. **Prints completion message.**
+
+#### `load_checkpoint()`
+
+1. **Loads checkpoint from disk** – Uses `torch.load()` with `map_location='cpu'` to load the saved `.pth` file.
+
+2. **Prints success message** – Confirms the model was loaded successfully.
+
+3. **Extracts generator state dict** – Retrieves `generator_state_dict` from the checkpoint.
+
+4. **Updates generator weights** – Iterates through loaded state dict, copies parameters that exist in the current model (skips any missing keys with a warning).
+
+5. **Loads updated dict into generator** – Calls `load_state_dict()` with the merged state dict.
+
+6. **Extracts critic (discriminator) state dict** – Retrieves `discriminator_state_dict` from the checkpoint.
+
+7. **Updates critic weights** – Same key‑by‑key copying, skipping missing keys and printing warnings.
+
+8. **Loads updated dict into critic** – Calls `load_state_dict()` with the merged critic state dict.
+
+9. **Restores optimizers** – Loads the saved state dicts for both generator and critic optimizers (`optimizerG_state_dict`, `optimizerD_state_dict`).
+
+10. **Retrieves last completed epoch** – Uses `checkpoint.get('epoch', 0)` to obtain the epoch number to resume from, defaulting to 0 if missing.
+
+11. **Prints resuming epoch** – Informs the user from which epoch training will continue.
+
+#### `train_from()`
+
+1. **Accepts checkpoint path and training flags** – Takes `checkpoint_path`, `save_checkpoints`, and `enable_sampling` as arguments.
+
+2. **Loads the checkpoint** – Calls `self.load_checkpoint(checkpoint_path)` to restore model weights, optimizer states, and the last completed epoch.
+
+3. **Resumes training** – Calls `self.train(save_checkpoints, enable_sampling)` to continue training from the restored state, respecting the user's flags for checkpointing and sampling.
+
+### `class Critic(nn.Module)`
+
+#### `__init__()`
+
+1. **Stores critic configuration** – Saves `num_channels`, `num_feature_maps`, `img_size`, and `dis_dropout_rate` as instance attributes.
+
+2. **Computes number of layers** – Calculates `num_layers = log2(img_size)` and generates a list of feature multipliers `features = [2^0, 2^1, ..., 2^(num_layers-3)]`.
+
+3. **Defines a pre‑layer (conv3d)** – A `nn.Conv3d` layer that takes `num_channels+1` input channels (sample + label projection) and outputs `num_channels` channels, using kernel 3, stride 1, padding 1, no bias.
+
+4. **Creates initial convolutional layer** – `nn.Conv3d` from `num_channels` to `num_feature_maps`, with kernel 4, stride 2, padding 1, no bias.
+
+5. **Builds hidden layers dynamically** – Iterates `(num_layers - 3)` times, each time increasing channels by factor 2 (using `features` list). Each hidden layer is a `Sequential` block containing:
+
+    * `Conv3d` (kernel 4, stride 2, padding 1, no bias)
+
+    * `BatchNorm3d`
+
+    * `LeakyReLU(0.2)`
+
+    * `Dropout3d` with `dis_dropout_rate`
+
+6. **Stores hidden layers as `ModuleList`** – Ensures PyTorch properly registers the modules.
+
+7. **Defines final convolutional layer** – `Conv3d` that reduces spatial dimensions to 1×1×1 and outputs a single scalar (critic score), using kernel 4, stride 2, padding 0, no bias.
+
+8. **Creates label embedding network** – A small MLP: `Linear(1 --> 512) --> LeakyReLU --> Linear(512 --> 32768) --> LeakyReLU`, all as `double()` tensors. The output size `32768 = 32^3` is designed to be reshaped into a 3D cube for concatenation with the sample.
+
+#### `forward(self, sample, label)`
+
+1. **Projects the label** – Passes the input label through `self.label_layers` (MLP) to produce a feature vector.
+
+2. **Reshapes label features into a 3D cube** – Uses `.view(-1, 1, 32, 32, 32)` to create a tensor with 1 channel and spatial dimensions matching the input sample (assumed 32×32×32).
+
+3. **Concatenates sample and label cube** – Stacks the sample and `lp_3d` along the channel dimension `(dim=1)`, increasing channels to `num_channels + 1`.
+
+4. **Passes through pre‑layer** – Applies the 3D convolution self.prelayer, followed by `LeakyReLU(0.2)` activation.
+
+5. **Passes through initial layer** – Applies `self.initial_layer` (Conv3d), followed by `LeakyReLU(0.2)`.
+
+6. **Processes through hidden layers** – Sequentially passes the tensor through each layer in `self.hidden_layers` (each containing Conv3d + BatchNorm + LeakyReLU + Dropout3d).
+
+7. **Final layer output** – Applies `self.final_layer` (Conv3d) to produce a single scalar score (critic output) for each sample in the batch.
+
+8. **Returns the critic score** – Output shape is `(batch_size, 1, 1, 1, 1)`.
+
+### `Generator(nn.Module)`
+
+#### `__init__()`
+
+1. **Stores generator configuration** – Saves `num_channels`, `num_feature_maps`, `img_size`, and `gen_dropout_rate` as instance attributes.
+
+2. **Computes layer count and feature multipliers** – Calculates `num_layers = log2(img_size)`, creates list `[2^0, 2^1, …, 2^(num_layers-3)]`, then reverses it for progressive upsampling.
+
+3. **Adds reflection padding** – `nn.ReflectionPad3d(1)` to maintain spatial dimensions during convolutions.
+
+4. **Defines initial transposed convolution layer** – `nn.ConvTranspose3d` with `in_channels=2` (noise + label projection), `out_channels = num_feature_maps` // features[0], kernel 4, stride 2, padding 4, bias False. Followed by BatchNorm3d.
+
+5. **Builds hidden transposed convolution layers** – Loops `num_layers - 3` times, each layer reduces channels (using integer division `num_feature_maps // features[i]`). Each hidden layer consists of:
+    * `ConvTranspose3d` (kernel 4, stride 2, padding 2, no bias)
+
+    * `BatchNorm3d`
+
+    * `LeakyReLU(0.2)`
+    
+    * `Dropout3d` with the provided `gen_dropout_rate`
+
+6. **Stores hidden layers as ModuleList** – Ensures PyTorch registers all modules correctly.
+
+7. **Defines final transposed convolution layer** – `ConvTranspose3d` with `in_channels = i_out` (last hidden layer's output channels), `out_channels = num_channels`, kernel 3, stride 1, padding 2, no bias.
+
+8. **Creates label embedding network** – A small MLP: `Linear(1 --> 16) --> LeakyReLU --> Linear(16 → 64) --> LeakyReLU`, all as `double()` tensors. The output size 64 is later reshaped into a `4^3` cube for concatenation with noise.
+
+#### `forward()`
+
+1. **Projects the label** – Passes label through `self.label_layers` (MLP) to produce a 64‑dimensional feature vector.
+
+2. **Reshapes label features into a 3D cube** – Uses `.view(-1, 1, 4, 4, 4)` to create a tensor with 1 channel and spatial dimensions `4×4×4`.
+
+3. **Concatenates noise and label cube** – Stacks the input `noise` (latent vector, shape: batch × 1 × 4×4×4) and `lp_3d` along the channel dimension (dim=1), resulting in `in_channels = 2`.
+
+4. **Applies initial padding** – Uses `self.padding` (ReflectionPad3d(1)) to expand spatial dimensions before the first transposed convolution.
+
+5. **Passes through initial layer** – Applies `self.initial_layer` (ConvTranspose3d --> BatchNorm), then a `LeakyReLU(0)` activation.
+
+6. **Applies padding again** – Adds reflection padding before the hidden layers.
+
+7. **Processes through hidden layers** – For each layer in `self.hidden_layers`, applies the layer (ConvTranspose3d → BatchNorm → LeakyReLU(0.2) → Dropout), then adds reflection padding. This occurs twice for the default architecture (num_layers = 5, so 2 hidden layers).
+
+8. **Final transposed convolution** – Applies `self.final_layer` (ConvTranspose3d with kernel 3, stride 1, padding 2) followed by `LeakyReLU(0)`.
+
+9. **Final padding and sigmoid** – Applies reflection padding one more time to reach the target spatial size (32×32×32), then passes through `torch.sigmoid()` to clamp output values between 0 and 1.
+
+10. **Returns generated image** – Output tensor of shape `(batch_size, num_channels, 32, 32, 32)`.
