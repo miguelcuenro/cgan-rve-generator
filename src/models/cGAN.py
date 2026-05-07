@@ -55,15 +55,15 @@ class DCWCGANGP:
         self.dataloader = torch.utils.data.DataLoader(dataset=dataset, batch_size=self.batch_size, shuffle=True, num_workers=0)
 
         # Initialize storing variables
-        fixed_label = torch.rand((self.batch_size, 1)) # Maybe we will have to restrain the range to [sample_min, sample_max] (let's see)
-        fixed_one_tensor = torch.ones(self.batch_size, 1, self.num_of_z, self.num_of_z, self.num_of_z)
+        self.fixed_label = torch.rand((self.batch_size, 1)).to(self.device).double() # Maybe we will have to restrain the range to [sample_min, sample_max] (let's see)
+        # fixed_one_tensor = torch.ones(self.batch_size, 1, self.num_of_z, self.num_of_z, self.num_of_z)
 
-        fixed_label_expanded = fixed_label.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
-        fixed_label_tensor = fixed_one_tensor * fixed_label_expanded
+        # fixed_label_expanded = fixed_label.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
+        # fixed_label_tensor = fixed_one_tensor * fixed_label_expanded
 
-        fixed_z = torch.round(torch.randn(self.batch_size, self.num_channels, self.num_of_z, self.num_of_z, self.num_of_z, device=self.device).double())
+        self.fixed_z = torch.round(torch.randn(self.batch_size, self.num_channels, self.num_of_z, self.num_of_z, self.num_of_z, device=self.device).double())
 
-        self.fixed_noise = torch.cat([fixed_z, fixed_label_tensor], dim=1)
+        # self.fixed_noise = torch.cat([fixed_z, fixed_label_tensor], dim=1)
 
         self.G_losses = []
         self.D_losses = []
@@ -101,7 +101,7 @@ class DCWCGANGP:
             nn.init.normal_(m.weight.data, 1.0, 0.02)
             nn.init.constant_(m.bias.data, 0)
 
-    def compute_gradients(self, real_samples, fake_samples):
+    def compute_gradients(self, real_samples, fake_samples, labels):
         '''
         return: The gradient penalty for enforcing the lipschitz continuity
         '''
@@ -115,7 +115,7 @@ class DCWCGANGP:
         real_samples = real_samples.to(self.device)
 
         interpolates = (alpha * real_samples + (1 - alpha) * fake_samples).float().requires_grad_(True).double()
-        d_interpolates = self.critic(interpolates)
+        d_interpolates = self.critic(interpolates, labels)
 
         fake = torch.full(size=(real_samples.shape[0], 1, 1, 1, 1), fill_value=1.0, device=self.device)
         fake.requires_grad = False
@@ -142,6 +142,9 @@ class DCWCGANGP:
         training_log_dir = os.path.join(os.path.expanduser("training_logs"), timestamp)
         sample_dir = os.path.join(training_log_dir, "sample_dir")
 
+        if save_checkpoints == True or enable_sampling == True:
+            writer = SummaryWriter(log_dir=training_log_dir)
+
         if save_checkpoints == True:
             # Create unique directories for sampling and logging
             #os.makedirs(training_log_dir, exist_ok=True)
@@ -151,7 +154,6 @@ class DCWCGANGP:
             os.makedirs(checkpoint_dir, exist_ok=True)
             #os.makedirs(sample_dir, exist_ok=True)
 
-            writer = SummaryWriter(log_dir=training_log_dir)
             writer.add_text('Training Info', f'Start Time: {train_start.strftime('%Y-%m-%d %H:%M:%S')}', 0)
             writer.add_text('Hyperparameters', self.hparams, global_step=0)
             #writer.add_text('Special Comments', self.description, global_step=0)
@@ -159,7 +161,7 @@ class DCWCGANGP:
         if enable_sampling == True:
             os.makedirs(sample_dir, exist_ok=True)
 
-        sampling_freq = 150 # Again: Do we use this?
+        sampling_freq = 150 # Again: Do we use this? Yes we do for SAMPLING #CHANGE IT TO 150
         sampling_counter = -1
         
         start_epoch = getattr(self, 'start_epoch', 0)  # default to 0 if not set
@@ -171,31 +173,32 @@ class DCWCGANGP:
                 sampling_counter = sampling_counter + 1
 
                 data = batch_data.to(self.device)
-                labels = batch_labels.to(self.device) # ensure compatible tensor operations during training or inference
-
+                labels = batch_labels[:, 0:1].to(self.device).double() # ensure compatible tensor operations during training or inference
+                print("LABEL SIZE")
+                print(labels.size())
                 # Create random labeled input (NOT ANYMORE)
                 #binary_noise = torch.randint(0, 2, (data.size(0), self.num_channels, self.num_of_z, self.num_of_z, self.num_of_z), device=self.device).double()
                 noise = torch.rand(data.size(0), self.num_channels, self.num_of_z, self.num_of_z, self.num_of_z, device=self.device).double()
-                z_one_tensor = torch.ones(data.size(0), 1, self.num_of_z, self.num_of_z, self.num_of_z)
+                # z_one_tensor = torch.ones(data.size(0), 1, self.num_of_z, self.num_of_z, self.num_of_z)
                 # label_values = torch.rand((data.size(0), 1)) # Maybe we will have to restrain the range to [sample_min, sample_max] (let's see)
 
                 # label_values_expanded = label_values.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
                 # label_tensor = one_tensor * label_values_expanded
 
                 # Prepare real labels (same as later)
-                labels_expanded = labels[:, 0].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).unsqueeze(-1) # Maybe it is better to normalize them from 0 to 1 (let's see)
-                label_tensor = z_one_tensor * labels_expanded
+                # labels_expanded = labels[:, 0].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).unsqueeze(-1) # Maybe it is better to normalize them from 0 to 1 (let's see)
+                #label_tensor = z_one_tensor * labels_expanded
 
                 # Concatenate input noise with real labels
-                z = torch.cat([noise, label_tensor], dim=1)
+                #z = torch.cat([noise, label_tensor], dim=1)
 
-                fake_imgs = self.gen.forward(z)
+                fake_imgs = self.gen.forward(noise, labels)
                 
                 # Prepare fake samples for the critic
-                img_one_tensor = torch.ones(data.size(0), 1, self.img_size, self.img_size, self.img_size)
-                img_label_tensor = img_one_tensor * labels_expanded
+                # img_one_tensor = torch.ones(data.size(0), 1, self.img_size, self.img_size, self.img_size)
+                # img_label_tensor = img_one_tensor * labels_expanded
                 
-                critic_input_fake = torch.cat([fake_imgs, img_label_tensor], dim=1)
+                # critic_input_fake = torch.cat([fake_imgs, img_label_tensor], dim=1)
 
                 if epoch == 51:
                     sampling_freq = 500 # Laut Xavi hier aufpassen (why???)
@@ -211,7 +214,7 @@ class DCWCGANGP:
                     np.save(full_path, sample)
 
                     with torch.no_grad():
-                        fake = self.gen.forward(self.fixed_noise)[0].detach().cpu().numpy()
+                        fake = self.gen.forward(self.fixed_z, self.fixed_label)[0].detach().cpu().numpy()
 
                         filename = f'{step}th_f_sample_' + str(timestamp)
                         full_path = os.path.join(sample_dir, filename)
@@ -227,25 +230,25 @@ class DCWCGANGP:
                 # Concatenate CRITIC input
                 # labels_expanded = labels[:, 0].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).unsqueeze(-1) # Maybe it is better to normalize them from 0 to 1 (let's see)
                 # input_labels = img_one_tensor * labels_expanded
-                input_data = torch.cat([data, img_label_tensor], dim=1)
+                # input_data = torch.cat([data, img_label_tensor], dim=1)
                 
                 # Training the DISCRIMINATOR
                 for j in range(self.d_loop):
                     self.critic.zero_grad()
 
                     # Real data
-                    outputs_real = self.critic.forward(input_data)
+                    outputs_real = self.critic.forward(data, labels)
                     d_loss_real = torch.mean(outputs_real)
 
                     # Fake data
-                    outputs_fake = self.critic.forward(critic_input_fake.detach())
+                    outputs_fake = self.critic.forward(fake_imgs.detach(), labels)
                     d_loss_fake = torch.mean(outputs_fake)
 
                     # Save discriminator loss
                     d_loss = -(d_loss_real - d_loss_fake)
                     self.D_losses.append(d_loss)
 
-                    gradient_penalty = self.compute_gradients(real_samples=data, fake_samples=critic_input_fake.detach()) * self.lambda_penal
+                    gradient_penalty = self.compute_gradients(real_samples=data, fake_samples=fake_imgs.detach(), labels=labels) * self.lambda_penal
 
                     if save_checkpoints == True:
                         writer.add_scalar('Loss/D_real', d_loss_real.item(), global_step=epoch*len(self.dataloader))
@@ -260,7 +263,7 @@ class DCWCGANGP:
                 # Training the GENERATOR
                 self.gen.zero_grad()
 
-                outputs = self.critic.forward(critic_input_fake)
+                outputs = self.critic.forward(fake_imgs, labels)
                 
                 # Save the generator's loss
                 g_loss = -(torch.mean(outputs))
@@ -277,7 +280,7 @@ class DCWCGANGP:
                 total_g_loss.backward()
                 self.optimizerG.step()
 
-            if ((epoch == self.num_epochs - 1) or ((epoch % 100 == 0) and (epoch != 0)) or (self.step_counter % 1000 == 0)) and save_checkpoints == True: # change epoch % 2 == 0 back to 100
+            if ((epoch == self.num_epochs - 1) or ((epoch % 1 == 0) or (self.step_counter % 1000 == 0)) and save_checkpoints == True): # and (epoch != 0)) or (self.step_counter % 1000 == 0)) and save_checkpoints == True: # change epoch % 2 == 0 back to 100
                 checkpoint_path = os.path.join(checkpoint_dir, f'checkpoint_epoch_{epoch+1}.pth')
                 checkpoint = {
                     'epoch': epoch + 1,
@@ -301,6 +304,7 @@ class DCWCGANGP:
             writer.add_text("Training Info", f"Duration: {duration_str}", 0)
             writer.add_scalar("Training Duration", duration.seconds, 0)
 
+        if save_checkpoints == True or enable_sampling == True:
             writer.close()
 
         print('\n' + '# -------------- #' + '\n' + 'Training complete!' + '\n' + '# -------------- #')
@@ -409,7 +413,24 @@ class Critic(nn.Module):
             kernel_size=4, stride=2, padding=0, bias=False
         )
 
-    def forward(self, z):
+        # Hidden layers to learn meaningful representation of the labels
+        self.label_layers = nn.Sequential(
+            nn.Linear(1, 512),
+            nn.LeakyReLU(0.2),
+            nn.Linear(512, 32768),
+            nn.LeakyReLU(0.2)
+        ).double()
+
+    def forward(self, sample, label):
+        # Compute label projection
+        lp = self.label_layers(label)
+
+        # Fold into a cube
+        lp_3d = lp.view(-1, 1, 32, 32, 32)
+
+        # Concatenate
+        z = torch.cat([sample, lp_3d], dim=1)
+
         z = nn.LeakyReLU(0.2)(self.prelayer(z))
         z = nn.LeakyReLU(0.2)(self.initial_layer(z))
         for layer in self.hidden_layers:
@@ -471,7 +492,25 @@ class Generator(nn.Module):
             bias=False
         )
 
-    def forward(self, z):
+        # Hidden layers to learn meaningful representation of the labels
+        self.label_layers = nn.Sequential(
+            nn.Linear(1, 16),
+            nn.LeakyReLU(0.2),
+            nn.Linear(16, 64),
+            nn.LeakyReLU(0.2)
+        ).double()
+
+    def forward(self, noise, label):
+        # Compute label projection
+        lp = self.label_layers(label)
+
+        # Fold into a cube
+        lp_3d = lp.view(-1, 1, 4, 4, 4)
+
+        # Concatenate
+        z = torch.cat([noise, lp_3d], dim=1)
+
+        # Train the model
         z = self.padding(z) # 6x6x6
         z = self.initial_layer(z) # 6x6x6
         z = nn.LeakyReLU(0)(z)

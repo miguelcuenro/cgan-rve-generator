@@ -3,31 +3,8 @@ import yaml
 import os
 import numpy as np
 
-# Load the parameters file
-with open('parameters.yaml', 'r') as dictionary:
-    parameters = yaml.safe_load(dictionary)
-
-# Raise an error if parameters.yaml is NOT a dictionary
-if not isinstance(parameters, dict):
-    raise TypeError("parameters.yaml did not parse to a dictionary. Please check the file's structure.")
-
-# Check for required keys
-required_keys = ['source', 'destination']
-missing_keys = [key for key in required_keys if key not in parameters]
-
-if missing_keys:
-    raise KeyError(f"Missing keys required in config.yaml: {missing_keys}")
-
-# Path to the data folders
-raw_data_dir = parameters['source']
-processed_data_dir = parameters['destination']
-
-# Raise an error if raw_data_dir was NOT found
-if not os.path.exists(raw_data_dir):
-    raise FileNotFoundError(f"Source data directory not found: {raw_data_dir}")
-
-# Create processed data directory if it does not exist
-os.makedirs(processed_data_dir, exist_ok=True)
+# Initialize variables
+processed_data_dir = None
 
 # Initialize counts
 number_of_skipped = 0
@@ -245,15 +222,47 @@ def traverse_directories(input_dir: str, output_dir: str) -> int:
         counter = process_simulation_dir(full_dir_path, output_dir, counter)
     return counter
 
-# Traverse the directory structure starting from store_path_dir
-traverse_directories(raw_data_dir, processed_data_dir)
+def main():
+    # Load the parameters file
+    with open('parameters.yaml', 'r') as dictionary:
+        parameters = yaml.safe_load(dictionary)
 
-# Perform augmentation
-perform_augmentation(processed_data_dir)
+    # Raise an error if parameters.yaml is NOT a dictionary
+    if not isinstance(parameters, dict):
+        raise TypeError("parameters.yaml did not parse to a dictionary. Please check the file's structure.")
 
-print(number_of_skipped_files, "skipped due to missing files or Specs.txt errors.")
-print(number_of_skipped_size, "skipped due to size.")
-print(number_of_NOT_skipped, "processed successfully.")
-print("Extracting phase process completed!")
-print(number_of_bands_zero, "files with number of bands 0.")
-print(number_of_bands_more_than_zero, "files with more than 0 bands.")
+    # Check for required keys
+    required_keys = ['source', 'destination']
+    missing_keys = [key for key in required_keys if key not in parameters]
+
+    if missing_keys:
+        raise KeyError(f"Missing keys required in config.yaml: {missing_keys}")
+
+    # Path to the data folders
+    global processed_data_dir
+
+    raw_data_dir = parameters['source']
+    processed_data_dir = parameters['destination']
+
+    # Raise an error if raw_data_dir was NOT found
+    if not os.path.exists(raw_data_dir):
+        raise FileNotFoundError(f"Source data directory not found: {raw_data_dir}")
+
+    # Create processed data directory if it does not exist
+    os.makedirs(processed_data_dir, exist_ok=True)
+
+    # Traverse the directory structure starting from store_path_dir
+    traverse_directories(raw_data_dir, processed_data_dir)
+
+    # Perform augmentation
+    perform_augmentation(processed_data_dir)
+
+    print(number_of_skipped_files, "skipped due to missing files or Specs.txt errors.")
+    print(number_of_skipped_size, "skipped due to size.")
+    print(number_of_NOT_skipped, "processed successfully.")
+    print("Extracting phase process completed!")
+    print(number_of_bands_zero, "files with number of bands 0.")
+    print(number_of_bands_more_than_zero, "files with more than 0 bands.")
+
+if __name__ == "__main__":
+    main()

@@ -14,56 +14,67 @@ from torch.utils.tensorboard import SummaryWriter
 from PIL import Image
 import matplotlib.pyplot as plt
 
-pv.global_theme.jupyter_backend = 'static'  # Best for screenshots
-print("PyVista ready (static PNGs)")
+# -------------- #
+# MAIN EXECUTION
+# -------------- #
 
-# Load the parameters file
-with open('parameters.yaml', 'r') as dictionary:
-    parameters = yaml.safe_load(dictionary)
+def main():
+    pv.global_theme.jupyter_backend = 'static'  # Best for screenshots
+    print("PyVista ready (static PNGs)")
 
-# Raise an error if parameters.yaml is NOT a dictionary
-if not isinstance(parameters, dict):
-    raise TypeError("parameters.yaml did not parse to a dictionary. Please check the file's structure.")
+    # Load the parameters file
+    with open('parameters.yaml', 'r') as dictionary:
+        parameters = yaml.safe_load(dictionary)
 
-dataroot = os.path.expanduser(parameters['dataroot'])
-image_dir = os.path.join(dataroot, "img")
+    # Raise an error if parameters.yaml is NOT a dictionary
+    if not isinstance(parameters, dict):
+        raise TypeError("parameters.yaml did not parse to a dictionary. Please check the file's structure.")
 
-# Make the dir to store the images if non existent
-os.makedirs(image_dir, exist_ok=True)
+    dataroot = os.path.expanduser(parameters['dataroot'])
+    image_dir = os.path.join(dataroot, "img")
 
-# Visualize samples
-labels = np.load(os.path.join(dataroot, 'labels.npy'))
-cnt = 0
+    # Make the dir to store the images if non existent
+    os.makedirs(image_dir, exist_ok=True)
 
-files = (file for file in os.listdir(dataroot) if os.path.isfile(os.path.join(dataroot, file)))
-sorted_files = natsorted(files)
+    # Visualize samples
+    labels = np.load(os.path.join(dataroot, 'labels.npy'))
+    cnt = 0
 
-print("-"*45)
-print("Rendering RVEs")
-print("-"*45)
-    
-for file in sorted_files:
-    if file != "labels.npy":
-        print(file)
-        rve = np.load(os.path.join(dataroot, file))
-        img = vu.visualize_tensor(rve)  # Returns PNG array!
+    files = (file for file in os.listdir(dataroot) if os.path.isfile(os.path.join(dataroot, file)))
+    sorted_files = natsorted(files)
 
-        # Plot img
-        plt.figure(figsize=(5,5))
-        plt.imshow(img)
-        plt.axis('off')
+    print("-"*45)
+    print("Rendering RVEs")
+    print("-"*45)
+        
+    for file in sorted_files:
+        if file != "labels.npy":
+            print(file)
+            rve = np.load(os.path.join(dataroot, file))
+            img = vu.visualize_tensor(rve)  # Returns PNG array!
 
-        # Add title
-        title = f"Ferrite phase ratio $l = {round(labels[cnt]*1e-2, 3)}$"
-        plt.title(title)
+            # Plot img
+            plt.figure(figsize=(5,5))
+            plt.imshow(img)
+            plt.axis('off')
 
-        # Save img
-        path = os.path.join(image_dir, 'rve_'+str(cnt)+'.png')
-        plt.savefig(path, format="PNG")
+            # Add title
+            title = f"Ferrite phase ratio $l = {round(labels[cnt]*1e-2, 3)}$"
+            plt.title(title)
 
-        # Increase counter
-        cnt += 1
+            # Save img
+            path = os.path.join(image_dir, 'rve_'+str(cnt)+'.png')
+            plt.savefig(path, format="PNG")
 
-print("-"*45)
-print("Render complete!")
-print("-"*45)
+            # Close img to save up memory
+            plt.close()
+
+            # Increase counter
+            cnt += 1
+
+    print("-"*45)
+    print("Render complete!")
+    print("-"*45)
+
+if __name__ == "__main__":
+    main()
