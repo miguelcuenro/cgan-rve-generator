@@ -322,3 +322,109 @@ This script contains the conditional Wasserstein GAN with Gradient Penalty (cWGA
 9. **Final padding and sigmoid** – Applies reflection padding one more time to reach the target spatial size (32×32×32), then passes through `torch.sigmoid()` to clamp output values between 0 and 1.
 
 10. **Returns generated image** – Output tensor of shape `(batch_size, num_channels, 32, 32, 32)`.
+## `op_table.py`
+
+This script loads our (pre-trained) cGAN and generates an arbitrary, chosen by you, number of synthetic RVEs. The generated labels and samples then get stored as numpy arrays.
+
+#### `class CustomDataset(Dataset)`
+
+1. **Inherits from `torch.utils.data.Dataset`** – A standard PyTorch dataset wrapper.
+
+2. **Initializes with data and labels** – Stores data and labels tensors as instance attributes.
+
+3. **Implements `__len__` method** – Returns the number of samples in the dataset.
+
+4. **Implements `__getitem__` method** – Retrieves the sample and label at a given index `idx` as a tuple `(data[idx], labels[idx])`.
+
+#### `find_npy_files()`
+
+1. **Walks the directory tree** – Recursively traverses `root_dir` using `os.walk()`.
+
+2. **Filters for `phase_grid.npy` files** – Checks each file name exactly matches `'phase_grid.npy'` (currently does not match augmented files like `phase_grid_rotated_0.npy`).
+
+3. **Builds full file paths** – For each matching file, joins the root path with the file name.
+
+4. **Appends to a list** – Adds the full path to the `npy_files` list.
+
+5. **Returns the list** – Provides all discovered `phase_grid.npy` paths for further processing.
+
+#### `load_data()`
+
+Note that the data we upload doesn't get used AT ALL! Except it does, the cGAN model requires data to get instantiated (Will I change that in the future? Maybe, but not now that's for sure).
+
+1. **Initializes empty lists and a set** – `data_list` for 3D volumes, `label_list` for corresponding labels, and `label_shapes` to track unique label shapes.
+
+2. **Iterates over each .npy file path** – Loads the array using `np.load(allow_pickle=True)`.
+
+3. **Checks volume size** – If the data size matches `img_size**3`, reshapes it to `(1, num_channels, img_size, img_size, img_size)` and appends to `data_list`.
+
+4. **Looks for associated label file** – Constructs `label.npy` path in the same directory as the volume.
+
+5. **Handles missing labels** – If label file exists, loads it, records its shape in `label_shapes`, and appends to `label_list`. If missing, removes the previously added volume from `data_list` (via `pop()`) and skips the file.
+
+6. **Validates data existence** – After the loop, raises an error if no valid data was found.
+
+7. Checks label shape consistency – If multiple distinct label shapes are found, prints them and raises an error.
+
+8. **Concatenates all data** – Uses `np.concatenate()` to stack all volumes into a single array data_np.
+
+9. **Repeats labels to match data count** – `np.repeat()` ensures each label is duplicated across all corresponding volumes (handles case where multiple volumes share the same label file).
+
+10. **Records global label min/max** – Stores `labels_min` and `labels_max` (as global variables) for later de‑normalization when generating new samples.
+
+11. **Converts to PyTorch tensors** – Creates `data_tensor` and `labels_tensor` as `double()` tensors.
+
+12. **Returns a CustomDataset instance** – Wraps the tensors in the previously defined CustomDataset class.
+
+#### `log_memory_usage()`
+
+It doesn't get called anywhere tho, but that doesn't mean it does not deserve its very own description :).
+
+1. **Takes a step argument** – Used to identify when the memory log is recorded.
+
+2. **Queries CUDA memory stats** – Calls `torch.cuda.memory_allocated()` to get the current allocated memory (bytes).
+
+3. **Gets reserved memory** – Calls `torch.cuda.memory_reserved()` to get the total memory reserved by the caching allocator.
+
+4. **Prints the information** – Outputs a formatted string with the step number, allocated memory, and reserved memory.
+
+5. **Useful for debugging** – Helps track GPU memory usage during training or inference.
+
+#### `main()`
+
+1. **Clears GPU cache** – Calls `torch.cuda.empty_cache()` at the start to free unused memory.
+
+2. **Loads hyperparameters** – Reads `parameters.yaml` and assigns values to variables (dataroot, batch_size, img_size, num_channels, model architectures, training settings, etc.). Makes `img_size` and `num_channels` global.
+
+3. **Prepares dataset** – Calls `find_npy_files(dataroot)` and `load_data(npy_files)` to create a CustomDataset with 3D volumes and their labels.
+
+4. **Instantiates the cGAN model** – Creates a `cGAN.DCWCGANGP` object using all loaded parameters and the dataset.
+
+5. **Prints dataset length and device info** – Outputs the number of samples and the device (CPU/CUDA) the model is using.
+
+6. **Clears cache again** – Calls `torch.cuda.empty_cache()` before loading the checkpoint.
+
+7. **Loads pre‑trained checkpoint** – Uses `operated_cgan.load_checkpoint(checkpoint_path)` to restore model weights and optimizer states.
+
+8. **Clears cache once more** – Final cache clearing before generation.
+
+9. **Creates a timestamped output directory** – Constructs a path using `parameters['root']` and current date/time, then creates the directory.
+
+10. **Generates synthetic samples** – Loops `number_of_samples` times:
+    * Draws random latent noise `binary_noise` (shape based on `num_of_z`).
+    
+    * Draws random label `label_values` (uniform in [0,1]).
+
+    * Passes noise and label through `operated_cgan`.gen to produce a raw image.
+
+    * Rounds the output to binary values with `torch.round()`.
+
+    * Saves the volume as a `.npy` file (`number_i.npy`).
+
+    * Stores the raw label value in `label_list`.
+
+11. **De‑normalizes labels** – Converts `label_list` to a numpy array and rescales from [0,1] to the original label range using stored `labels_min` and `labels_max`.
+
+12. **Saves the labels** – Writes the de‑normalized labels to `labels.npy` in the same directory.
+
+13. **Prints completion message** – Confirms that all samples have been generated.
