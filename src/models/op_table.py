@@ -199,6 +199,9 @@ def main():
     np.save(save_path, labels_np)
 
     print("Samples generated!")
+    print("-"*30)
+    print("Find them in", root)
+    print("-"*30)
 
 if __name__ == "__main__":
     main()
