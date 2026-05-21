@@ -1,2 +1,2 @@
-dataroot: "../models/rve/2026-04-11_20-26-32" # Path to sample directory
+dataroot: "../models/rve/2026-05-15_10-43-43" # Path to sample directory
 event_dir: "../models/training_logs/2026-05-02_19-36-53"

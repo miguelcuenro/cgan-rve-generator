@@ -280,7 +280,7 @@ class DCWCGANGP:
                 total_g_loss.backward()
                 self.optimizerG.step()
 
-            if ((epoch == self.num_epochs - 1) or ((epoch % 1 == 0) or (self.step_counter % 1000 == 0)) and save_checkpoints == True): # and (epoch != 0)) or (self.step_counter % 1000 == 0)) and save_checkpoints == True: # change epoch % 2 == 0 back to 100
+            if ((epoch == self.num_epochs - 1) or ((epoch % 100 == 0) or (self.step_counter % 1000 == 0)) and save_checkpoints == True): # and (epoch != 0)) or (self.step_counter % 1000 == 0)) and save_checkpoints == True: # change epoch % 2 == 0 back to 100
                 checkpoint_path = os.path.join(checkpoint_dir, f'checkpoint_epoch_{epoch+1}.pth')
                 checkpoint = {
                     'epoch': epoch + 1,
@@ -518,7 +518,7 @@ class Generator(nn.Module):
         for layer in self.hidden_layers: # Happens twice
             z = nn.LeakyReLU(0)(layer(z))
             z = self.padding(z)
-        z = nn.LeakyReLU(0)(self.final_layer(z)) # 30x30x30
+        z = self.final_layer(z) #z = nn.LeakyReLU(0)(self.final_layer(z)) # 30x30x30
         z = self.padding(z) # batch_sizex1x32x32x32
         z = torch.sigmoid(z)
         return z

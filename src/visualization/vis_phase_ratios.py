@@ -40,6 +40,10 @@ for file in sorted_files:
 
 pr_np = np.array(pr_list)
 
+print(pr_np)
+print("-"*45)
+print(1-pr_np)
+
 # Compute metrics
 
 error = pr_np - labels
