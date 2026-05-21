@@ -489,7 +489,7 @@ class Generator(nn.Module):
             kernel_size=3,
             stride=1,
             padding=2,
-            bias=False
+            bias=True
         )
 
         # Hidden layers to learn meaningful representation of the labels
