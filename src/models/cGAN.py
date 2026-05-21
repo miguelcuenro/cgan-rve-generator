@@ -489,7 +489,7 @@ class Generator(nn.Module):
             kernel_size=3,
             stride=1,
             padding=2,
-            bias=True
+            bias=True #False
         )
 
         # Hidden layers to learn meaningful representation of the labels
@@ -513,12 +513,12 @@ class Generator(nn.Module):
         # Train the model
         z = self.padding(z) # 6x6x6
         z = self.initial_layer(z) # 6x6x6
-        z = nn.LeakyReLU(0)(z)
+        z = nn.LeakyReLU(0.2)(z)
         z = self.padding(z) # 8x8x8
         for layer in self.hidden_layers: # Happens twice
-            z = nn.LeakyReLU(0)(layer(z))
+            z = nn.LeakyReLU(0.2)(layer(z))
             z = self.padding(z)
-        z = self.final_layer(z) #z = nn.LeakyReLU(0)(self.final_layer(z)) # 30x30x30
+        z = self.final_layer(z) # nn.LeakyReLU(0.2)(self.final_layer(z)) # 30x30x30 
         z = self.padding(z) # batch_sizex1x32x32x32
         z = torch.sigmoid(z)
         return z
