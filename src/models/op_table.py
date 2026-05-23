@@ -135,7 +135,9 @@ def main():
     # ------------ #
 
     npy_files = find_npy_files(dataroot)
-    dataset = load_data(npy_files)
+    _ = load_data(npy_files) # Just to store the labels globally
+
+    dataset = None # Bc we do not need it :)
 
     checkpoint = parameters['checkpoint']
 
@@ -148,7 +150,7 @@ def main():
                                         gen_num_feature_maps=gen_num_feature_maps, gen_dropout_rate=gen_dropout_rate,
                                         dis_num_feature_maps=dis_num_feature_maps, dis_dropout_rate=dis_dropout_rate)
 
-    print("Dataset length: ", len(dataset))
+    #print("Dataset length: ", len(dataset))
     print("Device: ", operated_cgan.device)
     #print(operated_cgan.description)
 

@@ -51,8 +51,12 @@ class DCWCGANGP:
         self.critic = Critic(num_channels=num_channels, num_feature_maps=dis_num_feature_maps, img_size=img_size, dis_dropout_rate=dis_dropout_rate).to(self.device).double()
         self.critic.apply(self.init_weights)
 
-        # Load data
-        self.dataloader = torch.utils.data.DataLoader(dataset=dataset, batch_size=self.batch_size, shuffle=True, num_workers=0)
+
+        # Load data only if dataset is provided
+        if dataset is not None:
+            self.dataloader = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=True, num_workers=0)
+        else:
+            self.dataloader = None
 
         # Initialize storing variables
         self.fixed_label = torch.rand((self.batch_size, 1)).to(self.device).double() # Maybe we will have to restrain the range to [sample_min, sample_max] (let's see)
@@ -135,6 +139,10 @@ class DCWCGANGP:
         return gradient_penalty
 
     def train(self, save_checkpoints=False, enable_sampling=False):
+        # Raise error if no dataset is provided
+        if self.dataloader is None:
+            raise RuntimeError("Cannot train without a dataset. Provide a dataset in __init__.")
+        
         print('\n' + "# ----------------- #" + '\n' + "Starting training..." + '\n' + "# ----------------- #")
         
         train_start = datetime.datetime.now()
