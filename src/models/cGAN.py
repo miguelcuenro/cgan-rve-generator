@@ -144,11 +144,24 @@ class DCWCGANGP:
             raise RuntimeError("Cannot train without a dataset. Provide a dataset in __init__.")
         
         print('\n' + "# ----------------- #" + '\n' + "Starting training..." + '\n' + "# ----------------- #")
-        
+
         train_start = datetime.datetime.now()
-        timestamp = train_start.strftime("%Y-%m-%d_%H-%M-%S")
-        training_log_dir = os.path.join(os.path.expanduser("training_logs"), timestamp)
+
+        if hasattr(self, 'resume_log_dir') and self.resume_log_dir:
+            training_log_dir = self.resume_log_dir
+            timestamp = os.path.basename(training_log_dir)   # for sample filenames
+            is_resuming = True
+
+            # Clear the attribute so a subsequent train() call (without resume) creates a new dir
+            self.resume_log_dir = None
+
+        else:
+            timestamp = train_start.strftime("%Y-%m-%d_%H-%M-%S")
+            training_log_dir = os.path.join(os.path.expanduser("training_logs"), timestamp)
+            is_resuming = False
+
         sample_dir = os.path.join(training_log_dir, "sample_dir")
+        checkpoint_dir = os.path.join(training_log_dir, 'checkpoint_dir')
 
         if save_checkpoints == True or enable_sampling == True:
             writer = SummaryWriter(log_dir=training_log_dir)
@@ -158,12 +171,12 @@ class DCWCGANGP:
             #os.makedirs(training_log_dir, exist_ok=True)
 
             #sample_dir = os.path.join(training_log_dir, 'sample_dir') # I am under the impression we do not sample
-            checkpoint_dir = os.path.join(training_log_dir, 'checkpoint_dir')
             os.makedirs(checkpoint_dir, exist_ok=True)
             #os.makedirs(sample_dir, exist_ok=True)
-
-            writer.add_text('Training Info', f'Start Time: {train_start.strftime('%Y-%m-%d %H:%M:%S')}', 0)
-            writer.add_text('Hyperparameters', self.hparams, global_step=0)
+            
+            if not is_resuming:
+                writer.add_text('Training Info', f'Start Time: {train_start.strftime('%Y-%m-%d %H:%M:%S')}', 0)
+                writer.add_text('Hyperparameters', self.hparams, global_step=0)
             #writer.add_text('Special Comments', self.description, global_step=0)
         
         if enable_sampling == True:
@@ -356,7 +369,12 @@ class DCWCGANGP:
 
         # Last recorded epoch
         self.start_epoch = checkpoint.get('epoch', 0)
+
+        # Derive the original log directory
+        self.resume_log_dir = os.path.dirname(os.path.dirname(checkpoint_path))
+
         print(f"Resuming training from epoch {self.start_epoch}")
+        print(f"Reusing log directory: {self.resume_log_dir}")
 
     def train_from(self, checkpoint_path, save_checkpoints=False, enable_sampling=False):
         self.load_checkpoint(checkpoint_path)
