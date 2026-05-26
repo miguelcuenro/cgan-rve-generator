@@ -28,6 +28,9 @@ save_checkpoints: 1
 enable_sampling: 1
 checkpoint: 'training_logs/'
 
+checkpoint_freq: 100
+checkpoint_step_freq: 1000
+
 number_of_samples: 16
 root: 'rve/'
 
