@@ -129,6 +129,8 @@ def main():
     ngpu = parameters['ngpu']
     lambda_penal = parameters['lambda_penal']
     sigma = parameters['sigma']
+    checkpoint_freq = parameters['checkpoint_freq']
+    checkpoint_step_freq = parameters['checkpoint_step_freq']
 
     # ------------ #
     # PREPARE DATA #
@@ -148,7 +150,8 @@ def main():
                                         d_loop=d_loop, lambda_penal=lambda_penal, sigma=sigma,
                                         img_size=img_size, num_channels=num_channels,
                                         gen_num_feature_maps=gen_num_feature_maps, gen_dropout_rate=gen_dropout_rate,
-                                        dis_num_feature_maps=dis_num_feature_maps, dis_dropout_rate=dis_dropout_rate)
+                                        dis_num_feature_maps=dis_num_feature_maps, dis_dropout_rate=dis_dropout_rate,
+                                        checkpoint_freq=checkpoint_freq, checkpoint_step_freq=checkpoint_step_freq)
 
     #print("Dataset length: ", len(dataset))
     print("Device: ", operated_cgan.device)
