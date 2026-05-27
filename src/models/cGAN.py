@@ -21,7 +21,8 @@ class DCWCGANGP:
                  lambda_penal, sigma,
                  img_size: int, num_channels,
                  gen_num_feature_maps, gen_dropout_rate, # particular gen init-parameters
-                dis_num_feature_maps, dis_dropout_rate  # particular critic init-parameters
+                 dis_num_feature_maps, dis_dropout_rate,  # particular critic init-parameters
+                 checkpoint_freq, checkpoint_step_freq
                  ):
         
         # Instantiate general (hyper)parameters
@@ -41,6 +42,9 @@ class DCWCGANGP:
         self.num_channels = num_channels
         self.lambda_penal = lambda_penal
         self.sigma = sigma
+
+        self.checkpoint_freq = checkpoint_freq
+        self.checkpoint_step_freq = checkpoint_step_freq
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() & (self.ngpu >= 1) else "cpu")
 
@@ -93,7 +97,9 @@ class DCWCGANGP:
             'lambda_penal':lambda_penal,
             'sigma':sigma,
             'img_size':img_size,
-            'num_channels':num_channels
+            'num_channels':num_channels,
+            'checkpoint_freq': checkpoint_freq,
+            'checkpoint_step_freq': checkpoint_step_freq
         }
         self.hparams = str(hparams)
 
@@ -301,7 +307,7 @@ class DCWCGANGP:
                 total_g_loss.backward()
                 self.optimizerG.step()
 
-            if ((epoch == self.num_epochs - 1) or ((epoch % 100 == 0) or (self.step_counter % 1000 == 0)) and save_checkpoints == True): # and (epoch != 0)) or (self.step_counter % 1000 == 0)) and save_checkpoints == True: # change epoch % 2 == 0 back to 100
+            if ((epoch == self.num_epochs - 1) or (((epoch+1) % self.checkpoint_freq == 0) or (self.step_counter % self.checkpoint_step_freq == 0)) and save_checkpoints == True): # and (epoch != 0)) or (self.step_counter % 1000 == 0)) and save_checkpoints == True: # change epoch % 2 == 0 back to 100
                 checkpoint_path = os.path.join(checkpoint_dir, f'checkpoint_epoch_{epoch+1}.pth')
                 checkpoint = {
                     'epoch': epoch + 1,
@@ -675,6 +681,7 @@ if __name__ == "__main__":
                         lambda_penal, sigma,
                         img_size, num_channels,  # size parameters
                         gen_num_feature_maps, gen_dropout_rate,  # particular gen init-parameters
-                        dis_num_feature_maps, dis_dropout_rate)  # particular critic init-parameters)
+                        dis_num_feature_maps, dis_dropout_rate,
+                        checkpoint_freq=100, checkpoint_step_freq=1000)  # particular critic init-parameters)
 
     cgan.train(save_checkpoints=False, enable_sampling=False)

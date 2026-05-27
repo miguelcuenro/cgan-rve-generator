@@ -21,7 +21,7 @@ beta2: 0.8
 
 ngpu: 1 # number of available gpus, 0 for cpu mode
 lambda_penal: 10 # lambda multiplier for the gradient penalty
-sigma: (10 ** 3)  # maybe dynamic?
+sigma: 1000  # maybe dynamic?
 
 from_checkpoint: 0
 save_checkpoints: 1
