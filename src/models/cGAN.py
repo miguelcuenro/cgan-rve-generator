@@ -75,7 +75,9 @@ class DCWCGANGP:
 
         self.G_losses = []
         self.D_losses = []
-        self.step_counter = 0
+        self.gen_step_counter = 0
+        self.dis_step_counter = 0
+
 
         # Setup Adam optimizers for both G and D
         self.optimizerD = optim.Adam(self.critic.parameters(), lr=learning_rate_disc, betas=(beta1, beta2))
@@ -196,7 +198,7 @@ class DCWCGANGP:
             print('Epoch: ', epoch+1)
             for i, batch in tqdm(enumerate(self.dataloader), position=0):
                 batch_data, batch_labels = batch  # Unpack the batch tuple
-                self.step_counter = epoch * len(self.dataloader) + i
+                self.gen_step_counter = epoch * len(self.dataloader) + i
                 sampling_counter = sampling_counter + 1
 
                 data = batch_data.to(self.device)
@@ -232,7 +234,7 @@ class DCWCGANGP:
 
                 # Sample the output of the generator
                 if sampling_counter % sampling_freq == 0 and enable_sampling == True:
-                    step = self.step_counter
+                    step = self.gen_step_counter
 
                     sample = fake_imgs[0].detach().cpu().numpy()
                     
@@ -278,14 +280,16 @@ class DCWCGANGP:
                     gradient_penalty = self.compute_gradients(real_samples=data, fake_samples=fake_imgs.detach(), labels=labels) * self.lambda_penal
 
                     if save_checkpoints == True:
-                        writer.add_scalar('Loss/D_real', d_loss_real.item(), global_step=epoch*len(self.dataloader))
-                        writer.add_scalar('Loss/D_fake', d_loss_fake.item(), global_step=epoch * len(self.dataloader) + i)
-                        writer.add_scalar('Loss/Critic', d_loss.item(), global_step=epoch * len(self.dataloader) + i)
-                        writer.add_scalar('GP', gradient_penalty.item(), global_step=epoch*len(self.dataloader)+i)
+                        writer.add_scalar('Loss/D_real', d_loss_real.item(), global_step=self.dis_step_counter)
+                        writer.add_scalar('Loss/D_fake', d_loss_fake.item(), global_step=self.dis_step_counter)
+                        writer.add_scalar('Loss/Critic', d_loss.item(), global_step=self.dis_step_counter)
+                        writer.add_scalar('GP', gradient_penalty.item(), global_step=self.dis_step_counter)
                     
                     total_d_loss = d_loss + gradient_penalty
                     total_d_loss.backward()
                     self.optimizerD.step()
+                    
+                    self.dis_step_counter += 1
 
                 # Training the GENERATOR
                 self.gen.zero_grad()
@@ -307,7 +311,7 @@ class DCWCGANGP:
                 total_g_loss.backward()
                 self.optimizerG.step()
 
-            if ((epoch == self.num_epochs - 1) or (((epoch+1) % self.checkpoint_freq == 0) or (self.step_counter % self.checkpoint_step_freq == 0)) and save_checkpoints == True): # and (epoch != 0)) or (self.step_counter % 1000 == 0)) and save_checkpoints == True: # change epoch % 2 == 0 back to 100
+            if ((epoch == self.num_epochs - 1) or (((epoch+1) % self.checkpoint_freq == 0) or (self.gen_step_counter % self.checkpoint_step_freq == 0)) and save_checkpoints == True): # and (epoch != 0)) or (self.step_counter % 1000 == 0)) and save_checkpoints == True: # change epoch % 2 == 0 back to 100
                 checkpoint_path = os.path.join(checkpoint_dir, f'checkpoint_epoch_{epoch+1}.pth')
                 checkpoint = {
                     'epoch': epoch + 1,
@@ -316,8 +320,9 @@ class DCWCGANGP:
                     'generator_loss': self.G_losses[-1],
                     'discriminator_loss': self.D_losses[-1],
                     'optimizerG_state_dict': self.optimizerG.state_dict(),
-                    'optimizerD_state_dict': self.optimizerD.state_dict()#,
-                    #'description': self.description,
+                    'optimizerD_state_dict': self.optimizerD.state_dict(),
+                    'gen_step_counter': self.gen_step_counter,
+                    'dis_step_counter': self.dis_step_counter
                 }
             
                 torch.save(checkpoint, checkpoint_path)
@@ -378,6 +383,9 @@ class DCWCGANGP:
 
         # Derive the original log directory
         self.resume_log_dir = os.path.dirname(os.path.dirname(checkpoint_path))
+
+        self.gen_step_counter = checkpoint.get('gen_step_counter', 0)
+        self.dis_step_counter = checkpoint.get('dis_step_counter', 0)
 
         print(f"Resuming training from epoch {self.start_epoch}")
         print(f"Reusing log directory: {self.resume_log_dir}")
