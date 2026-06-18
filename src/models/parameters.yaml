@@ -1,6 +1,6 @@
 dataroot: "../../data/processed_data" # Path to root directory
 num_of_workers: 1 # Number of simultaneous loads of data into the RAM
-batch_size: 8 #64  # Batch size during training
+batch_size: 8 #64  # Batch size during training (Remember to change this before sending to the cluster!)
 img_size: 32 # Spatial size of the training volumes. Every volume will be resized to this
 num_channels: 1 # Number of channels in the training samples
 gen_num_feature_maps: 16  # Number of feature maps in the generator
