@@ -1,7 +1,7 @@
-dataroot: "../models/rve/2026-05-29_04-40-45" # Path to sample directory
-event_dir: "../models/training_logs/2026-05-25_07-17-34"
+dataroot: "../models/rve/2026-06-19_10-42-36" # Path to sample directory
+event_dir: "../models/training_logs/2026-06-19_10-31-04"
 
 # Delete later on!
-batch_size: 8
-d_loop: 10
-num_samples: 32000   # total number of training samples (adjust to your dataset)
+#batch_size: 8
+#d_loop: 10
+#num_samples: 32000   # total number of training samples (adjust to your dataset)
