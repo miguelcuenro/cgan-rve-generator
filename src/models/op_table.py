@@ -203,6 +203,15 @@ def main():
     save_path = os.path.join(root, filename)
     np.save(save_path, labels_np)
 
+    # Save manifest
+    manifest_path = os.path.join(root, "manifest.txt")
+    with open(manifest_path, "w") as f:
+        f.write(f"Checkpoint: {checkpoint}\n")
+        f.write(f"Generated: {datetime.datetime.now().isoformat()}\n")
+        f.write(f"Number of samples: {number_of_samples}\n")
+        f.write(f"Labels min: {labels_min[0]}\n")
+        f.write(f"Labels max: {labels_max[0]}\n")
+
     print("Samples generated!")
     print("-"*30)
     print("Find them in", root)
