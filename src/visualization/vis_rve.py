@@ -48,7 +48,7 @@ def main():
     print("-"*45)
         
     for file in sorted_files:
-        if file != "labels.npy":
+        if file.endswith(".npy") and file != "labels.npy":
             print(file)
             rve = np.load(os.path.join(dataroot, file))
             img = vu.visualize_tensor(rve)  # Returns PNG array!
