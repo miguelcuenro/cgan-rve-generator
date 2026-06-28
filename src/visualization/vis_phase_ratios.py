@@ -33,7 +33,7 @@ files = (file for file in os.listdir(dataroot) if os.path.isfile(os.path.join(da
 sorted_files = natsorted(files)
 
 for file in sorted_files:
-    if file != "labels.npy":
+    if file.endswith(".npy") and file != "labels.npy":
         rve = np.load(os.path.join(dataroot, file))
         ferrite_phase_ratio = 1 - np.mean(rve)
         pr_list.append(ferrite_phase_ratio)

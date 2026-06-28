@@ -59,7 +59,7 @@ def print_available_tags(log_path):
                 print(f"  - {tag}")
     print("-"*40)
 
-def moving_avg(data, window_size=10):
+def moving_avg(data, window_size=250):
     if isinstance(data, list):
         data = np.array(data)
 
@@ -120,7 +120,7 @@ def main():
 
     # Plotting the three subplots
     axs_flat[0].plot(steps_gen, losses_gen, label="Gen Loss")
-    axs_flat[0].plot(steps_gen, moving_avg(data=losses_gen, window_size=10)[9:-9], linestyle='--', label='Centered MA')
+    axs_flat[0].plot(steps_gen, moving_avg(data=losses_gen, window_size=250)[249:-249], linestyle='--', label='Centered MA')
     axs_flat[0].hlines(y=0, xmin=steps_gen[0]-1e2, xmax=steps_gen[-1]+1e2, linestyle='--', color='r', alpha=0.6)
 
     axs_flat[0].set_xlabel('Iteration')
@@ -131,7 +131,7 @@ def main():
     axs_flat[0].set_title('Subplot 1: Generator Loss')
 
     axs_flat[1].plot(steps_dis, losses_dis, label='Critic Loss')
-    axs_flat[1].plot(steps_dis, moving_avg(data=losses_dis, window_size=10)[9:-9], linestyle='--', label='Centered MA')
+    axs_flat[1].plot(steps_dis, moving_avg(data=losses_dis, window_size=250)[249:-249], linestyle='--', label='Centered MA')
     axs_flat[1].hlines(y=0, xmin=steps_dis[0]-1e2, xmax=steps_dis[-1]+1e2, linestyle='--', color='r', alpha=0.6)
 
     axs_flat[1].set_xlabel('Iteration')
