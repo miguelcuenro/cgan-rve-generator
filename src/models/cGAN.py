@@ -49,10 +49,10 @@ class DCWCGANGP:
         self.device = torch.device("cuda:0" if torch.cuda.is_available() & (self.ngpu >= 1) else "cpu")
 
         # Instantiate parts of the cGAN
-        self.gen = Generator(num_channels=num_channels, num_feature_maps=gen_num_feature_maps, img_size=img_size, gen_dropout_rate=gen_dropout_rate).to(self.device).double()
+        self.gen = Generator(num_channels=num_channels, num_feature_maps=gen_num_feature_maps, img_size=img_size, gen_dropout_rate=gen_dropout_rate).to(self.device).float()
         self.gen.apply(self.init_weights)
 
-        self.critic = Critic(num_channels=num_channels, num_feature_maps=dis_num_feature_maps, img_size=img_size, dis_dropout_rate=dis_dropout_rate).to(self.device).double()
+        self.critic = Critic(num_channels=num_channels, num_feature_maps=dis_num_feature_maps, img_size=img_size, dis_dropout_rate=dis_dropout_rate).to(self.device).float()
         self.critic.apply(self.init_weights)
 
 
@@ -63,13 +63,13 @@ class DCWCGANGP:
             self.dataloader = None
 
         # Initialize storing variables
-        self.fixed_label = torch.rand((self.batch_size, 1)).to(self.device).double() # Maybe we will have to restrain the range to [sample_min, sample_max] (let's see)
+        self.fixed_label = torch.rand((self.batch_size, 1)).to(self.device).float() # Maybe we will have to restrain the range to [sample_min, sample_max] (let's see)
         # fixed_one_tensor = torch.ones(self.batch_size, 1, self.num_of_z, self.num_of_z, self.num_of_z)
 
         # fixed_label_expanded = fixed_label.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
         # fixed_label_tensor = fixed_one_tensor * fixed_label_expanded
 
-        self.fixed_z = torch.round(torch.randn(self.batch_size, self.num_channels, self.num_of_z, self.num_of_z, self.num_of_z, device=self.device).double())
+        self.fixed_z = torch.round(torch.randn(self.batch_size, self.num_channels, self.num_of_z, self.num_of_z, self.num_of_z, device=self.device).float())
 
         # self.fixed_noise = torch.cat([fixed_z, fixed_label_tensor], dim=1)
 
@@ -119,14 +119,12 @@ class DCWCGANGP:
         '''
 
         # Random weight term for interpolation between real and fake samples
-        alpha = torch.tensor(
-            np.random.random((real_samples.size(0), self.num_channels, self.img_size, self.img_size, self.img_size)),
-            device=self.device, dtype=torch.float32
-        )
+        alpha = torch.rand(real_samples.size(0), self.num_channels, self.img_size, self.img_size, self.img_size,
+                   device=self.device, dtype=real_samples.dtype)
 
-        real_samples = real_samples.to(self.device)
+         
 
-        interpolates = (alpha * real_samples + (1 - alpha) * fake_samples).float().requires_grad_(True).double()
+        interpolates = (alpha * real_samples + (1 - alpha) * fake_samples).requires_grad_(True)
         d_interpolates = self.critic(interpolates, labels)
 
         fake = torch.full(size=(real_samples.shape[0], 1, 1, 1, 1), fill_value=1.0, device=self.device)
@@ -141,8 +139,11 @@ class DCWCGANGP:
             retain_graph=True,
             only_inputs=True
         )
+
         gradients = gradients[0]
-        gradient_penalty = ((gradients.norm(p=2, dim=None) -1 ) ** 2).mean()
+        gradients = gradients.view(gradients.size(0), -1)
+        gradient_norm = gradients.norm(p=2, dim=1)
+        gradient_penalty = ((gradient_norm - 1) ** 2).mean()
         
         return gradient_penalty
 
@@ -202,12 +203,12 @@ class DCWCGANGP:
                 sampling_counter = sampling_counter + 1
 
                 data = batch_data.to(self.device)
-                labels = batch_labels[:, 0:1].to(self.device).double() # ensure compatible tensor operations during training or inference
+                labels = batch_labels[:, 0:1].to(self.device).float() # ensure compatible tensor operations during training or inference
                 print("LABEL SIZE")
                 print(labels.size())
                 # Create random labeled input (NOT ANYMORE)
                 #binary_noise = torch.randint(0, 2, (data.size(0), self.num_channels, self.num_of_z, self.num_of_z, self.num_of_z), device=self.device).double()
-                noise = torch.rand(data.size(0), self.num_channels, self.num_of_z, self.num_of_z, self.num_of_z, device=self.device).double()
+                noise = torch.rand(data.size(0), self.num_channels, self.num_of_z, self.num_of_z, self.num_of_z, device=self.device).float()
                 # z_one_tensor = torch.ones(data.size(0), 1, self.num_of_z, self.num_of_z, self.num_of_z)
                 # label_values = torch.rand((data.size(0), 1)) # Maybe we will have to restrain the range to [sample_min, sample_max] (let's see)
 
@@ -459,9 +460,13 @@ class Critic(nn.Module):
             nn.LeakyReLU(0.2),
             nn.Linear(512, 32768),
             nn.LeakyReLU(0.2)
-        ).double()
+        ).float()
 
     def forward(self, sample, label):
+        # Cast to the same dtype as the critic's parameters
+        sample = sample.to(next(self.parameters()).dtype)
+        label = label.to(next(self.parameters()).dtype)
+
         # Compute label projection
         lp = self.label_layers(label)
 
@@ -538,7 +543,7 @@ class Generator(nn.Module):
             nn.LeakyReLU(0.2),
             nn.Linear(16, 64),
             nn.LeakyReLU(0.2)
-        ).double()
+        ).float()
 
     def forward(self, noise, label):
         # Compute label projection
@@ -631,8 +636,8 @@ def load_data(npy_files):
     data_np = np.concatenate(data_list, axis=0)
     labels_np = np.repeat(label_list, repeats=[data_np.shape[0] // len(label_list)], axis=0)
 
-    data_tensor = torch.from_numpy(data_np).double()
-    labels_tensor = torch.from_numpy(labels_np).double()
+    data_tensor = torch.from_numpy(data_np).float()
+    labels_tensor = torch.from_numpy(labels_np).float()
 
     return CustomDataset(data_tensor, labels_tensor)
 

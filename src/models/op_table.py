@@ -178,9 +178,9 @@ def main():
 
     for i in range(number_of_samples):
         binary_noise = torch.randn(1, operated_cgan.num_channels, operated_cgan.num_of_z, operated_cgan.num_of_z,
-                            operated_cgan.num_of_z, device=operated_cgan.device).double()
+                            operated_cgan.num_of_z, device=operated_cgan.device).float()
         
-        label_values = torch.rand((1, 1)).double()
+        label_values = torch.rand((1, 1)).float()
         # one_tensor = torch.ones(1, 1, operated_cgan.num_of_z, operated_cgan.num_of_z, operated_cgan.num_of_z)
 
         # label_values_expanded = label_values.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
