@@ -13,7 +13,7 @@ num_epochs: 500 # Number of training epochs
 learning_rate_disc: 0.0002
 learning_rate_gen: 0.00008
 
-d_loop: 2 #1 # factor which decides how many times the critic is trained for each gen training step
+d_loop: 5 #1 # factor which decides how many times the critic is trained for each gen training step
 
 # beta hyperparameters for the Adam optimizer
 beta1: 0.65
